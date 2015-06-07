@@ -30,7 +30,7 @@ module RailsAdmin
           end
 
           register_instance_option :multiple? do
-            properties && [:serialized].include?(properties.type)
+            (properties && [:serialized].include?(properties.type)) || value.kind_of?(Array)
           end
         end
       end
