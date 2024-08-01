@@ -1,4 +1,6 @@
-class SetPrimaryKeyNotNullForDivisions < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class SetPrimaryKeyNotNullForDivisions < ActiveRecord::Migration[5.0]
   def up
     drop_table :divisions
     create_table :divisions, id: false do |t|

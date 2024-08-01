@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module RailsAdmin
   module Adapters
     module Mongoid
@@ -11,12 +13,14 @@ module RailsAdmin
             def rails_admin(&block)
               RailsAdmin.config(self, &block)
             end
-            alias_method_chain :accepts_nested_attributes_for, :rails_admin
+
+            alias_method :accepts_nested_attributes_for_without_rails_admin, :accepts_nested_attributes_for
+            alias_method :accepts_nested_attributes_for, :accepts_nested_attributes_for_with_rails_admin
           end
         end
 
         def rails_admin_default_object_label_method
-          self.new_record? ? "new #{self.class}" : "#{self.class} ##{id}"
+          new_record? ? "new #{self.class}" : "#{self.class} ##{id}"
         end
 
         def safe_send(value)

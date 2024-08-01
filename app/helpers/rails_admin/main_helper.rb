@@ -1,4 +1,4 @@
-require 'builder'
+# frozen_string_literal: true
 
 module RailsAdmin
   module MainHelper
@@ -14,26 +14,48 @@ module RailsAdmin
       return 'info' if percent < 34     # < 1/100 of max
       return 'success' if percent < 67  # < 1/10 of max
       return 'warning' if percent < 84  # < 1/3 of max
+
       'danger'                          # > 1/3 of max
     end
 
-    def get_column_sets(properties)
-      sets = []
-      property_index = 0
-      set_index = 0
+    def filterable_fields
+      @filterable_fields ||= @model_config.list.fields.select(&:filterable?)
+    end
 
-      while property_index < properties.length
-        current_set_width = 0
-        loop do
-          sets[set_index] ||= []
-          sets[set_index] << properties[property_index]
-          current_set_width += (properties[property_index].column_width || 120)
-          property_index += 1
-          break if current_set_width >= RailsAdmin::Config.total_columns_width || property_index >= properties.length
+    def ordered_filters
+      return @ordered_filters if @ordered_filters.present?
+
+      @index = 0
+      @ordered_filters = (params[:f].try(:permit!).try(:to_h) || @model_config.list.filters).inject({}) do |memo, filter|
+        field_name = filter.is_a?(Array) ? filter.first : filter
+        (filter.is_a?(Array) ? filter.last : {(@index += 1) => {'v' => ''}}).each do |index, filter_hash|
+          if filter_hash['disabled'].blank?
+            memo[index] = {field_name => filter_hash}
+          else
+            params[:f].delete(field_name)
+          end
         end
-        set_index += 1
+        memo
+      end.to_a.sort_by(&:first)
+    end
+
+    def ordered_filter_options
+      if ordered_filters
+        @ordered_filter_options ||= ordered_filters.map do |duplet|
+          filter_for_field = duplet[1]
+          filter_name = filter_for_field.keys.first
+          filter_hash = filter_for_field.values.first
+          unless (field = filterable_fields.find { |f| f.name == filter_name.to_sym }&.with({view: self}))
+            raise "#{filter_name} is not currently filterable; filterable fields are #{filterable_fields.map(&:name).join(', ')}"
+          end
+
+          field.filter_options.merge(
+            index: duplet[0],
+            operator: filter_hash['o'] || field.default_filter_operator,
+            value: filter_hash['v'],
+          )
+        end
       end
-      sets
     end
   end
 end

@@ -5,9 +5,9 @@ en:
         name: Their Name
       team:
         manager: Team Manager
+        main_sponsor: Main Sponsor
         fans: Some Fans
-  mongoid:
-    *en_attributes
+  mongoid: *en_attributes
 fr:
   activerecord: &fr_attributes
     attributes:
@@ -16,5 +16,4 @@ fr:
       team:
         manager: Manager de l'équipe
         fans: Quelques fans
-  mongoid:
-    *fr_attributes
+  mongoid: *fr_attributes

@@ -1,7 +1,9 @@
-require 'spec_helper'
-require File.expand_path('../../../config/initializers/active_record_extensions', __FILE__)
+# frozen_string_literal: true
 
-describe 'ActiveRecord::Base', active_record: true do
+require 'spec_helper'
+require File.expand_path('../../config/initializers/active_record_extensions', __dir__)
+
+RSpec.describe 'ActiveRecord::Base', active_record: true do
   describe '#safe_send' do
     it 'only calls #read_attribute once' do
       @player = Player.new

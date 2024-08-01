@@ -1,4 +1,6 @@
-class CreateVersions < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class CreateVersions < ActiveRecord::Migration[5.0]
   def change
     create_table :versions do |t|
       t.string :item_type, null: false
@@ -8,6 +10,6 @@ class CreateVersions < ActiveRecord::Migration
       t.text :object
       t.datetime :created_at
     end
-    add_index :versions, [:item_type, :item_id]
+    add_index :versions, %i[item_type item_id]
   end
 end

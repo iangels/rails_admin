@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_admin/config/proxyable'
 require 'rails_admin/config/configurable'
 require 'rails_admin/config/hideable'
@@ -18,9 +20,25 @@ module RailsAdmin
           []
         end
 
+        register_instance_option :show_in_navigation do
+          root?
+        end
+
+        register_instance_option :show_in_sidebar do
+          !show_in_navigation
+        end
+
+        register_instance_option :show_in_menu do
+          true
+        end
+
+        register_instance_option :sidebar_label do
+          nil
+        end
+
         # http://getbootstrap.com/2.3.2/base-css.html#icons
         register_instance_option :link_icon do
-          'icon-question-sign'
+          'fas fa-question'
         end
 
         # Should the action be visible
@@ -33,7 +51,7 @@ module RailsAdmin
             (only.nil? || [only].flatten.collect(&:to_s).include?(bindings[:abstract_model].to_s)) &&
             ![except].flatten.collect(&:to_s).include?(bindings[:abstract_model].to_s) &&
             !bindings[:abstract_model].config.excluded?
-          )
+          ) && (!respond_to?(:writable?) || writable?)
         end
 
         register_instance_option :authorized? do
@@ -57,8 +75,13 @@ module RailsAdmin
           false
         end
 
-        # Render via pjax?
-        register_instance_option :pjax? do
+        # Target window [_self, _blank]
+        register_instance_option :link_target do
+          nil
+        end
+
+        # Determines whether to navigate via Turbo Drive or not
+        register_instance_option :turbo? do
           true
         end
 
@@ -83,7 +106,7 @@ module RailsAdmin
           key.to_sym
         end
 
-        # For Cancan and the like
+        # For CanCanCan and the like
         register_instance_option :authorization_key do
           key.to_sym
         end
@@ -115,12 +138,11 @@ module RailsAdmin
 
         # Breadcrumb parent
         register_instance_option :breadcrumb_parent do
-          case
-          when root?
+          if root?
             [:dashboard]
-          when collection?
+          elsif collection?
             [:index, bindings[:abstract_model]]
-          when member?
+          elsif member?
             [:show, bindings[:abstract_model], bindings[:object]]
           end
         end

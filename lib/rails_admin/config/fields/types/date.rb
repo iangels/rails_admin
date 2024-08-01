@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_admin/config/fields/types/datetime'
 
 module RailsAdmin
@@ -5,17 +7,32 @@ module RailsAdmin
     module Fields
       module Types
         class Date < RailsAdmin::Config::Fields::Types::Datetime
-          # Register field type for the type loader
           RailsAdmin::Config::Fields::Types.register(self)
 
-          @format = :long
-          @i18n_scope = [:date, :formats]
-          @js_plugin_options = {
-            'showTime' => false,
-          }
+          def parse_value(value)
+            ::Date.parse(value) if value.present?
+          end
 
-          def parse_input(params)
-            params[name] = self.class.normalize(params[name], localized_date_format).to_date if params[name].present?
+          register_instance_option :date_format do
+            :long
+          end
+
+          register_instance_option :datepicker_options do
+            {
+              allowInput: true,
+              altFormat: flatpickr_format,
+            }
+          end
+
+          register_instance_option :i18n_scope do
+            %i[date formats]
+          end
+
+          register_instance_option :html_attributes do
+            {
+              required: required?,
+              size: 18,
+            }
           end
         end
       end

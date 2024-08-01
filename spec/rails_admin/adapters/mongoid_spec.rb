@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 
-describe 'RailsAdmin::Adapters::Mongoid', mongoid: true do
+RSpec.describe 'RailsAdmin::Adapters::Mongoid', mongoid: true do
   describe '#associations' do
     it 'returns Association class' do
       expect(RailsAdmin::AbstractModel.new(Player).associations.first).
@@ -15,22 +17,36 @@ describe 'RailsAdmin::Adapters::Mongoid', mongoid: true do
     end
   end
 
+  describe '#base_class' do
+    it 'returns inheritance base class' do
+      expect(RailsAdmin::AbstractModel.new(Hardball).base_class).to eq Ball
+    end
+  end
+
   describe 'data access methods' do
     before do
-      @players = FactoryGirl.create_list(:player, 3)
+      @players = FactoryBot.create_list(:player, 3)
       @abstract_model = RailsAdmin::AbstractModel.new('Player')
     end
 
-    it '#new returns instance of AbstractObject' do
-      expect(@abstract_model.new.object).to be_instance_of(Player)
+    it '#new returns a Mongoid::Document instance' do
+      expect(@abstract_model.new).to be_a(Mongoid::Document)
     end
 
-    it '#get returns instance of AbstractObject' do
-      expect(@abstract_model.get(@players.first.id.to_s).object).to eq(@players.first)
+    it '#get returns a Mongoid::Document instance' do
+      expect(@abstract_model.get(@players.first.id.to_s)).to eq(@players.first)
     end
 
     it '#get returns nil when id does not exist' do
       expect(@abstract_model.get('4f4f0824dcf2315093000000')).to be_nil
+    end
+
+    context 'when Mongoid.raise_not_found_error is false' do
+      before { allow(Mongoid).to receive(:raise_not_found_error).and_return(false) }
+
+      it '#get returns nil when id does not exist' do
+        expect(@abstract_model.get('4f4f0824dcf2315093000000')).to be_nil
+      end
     end
 
     it '#first returns a player' do
@@ -101,8 +117,8 @@ describe 'RailsAdmin::Adapters::Mongoid', mongoid: true do
             queryable true
           end
         end
-        @players = FactoryGirl.create_list(:player, 3)
-        @team = FactoryGirl.create :team, name: 'foobar'
+        @players = FactoryBot.create_list(:player, 3)
+        @team = FactoryBot.create :team, name: 'foobar'
         @team.players << @players[1]
         @abstract_model = RailsAdmin::AbstractModel.new('Player')
       end
@@ -121,13 +137,13 @@ describe 'RailsAdmin::Adapters::Mongoid', mongoid: true do
         RailsAdmin.config Team do
           field :players do
             queryable true
-            searchable :all
+            searchable :name
           end
         end
-        @teams = FactoryGirl.create_list(:team, 3)
+        @teams = FactoryBot.create_list(:team, 3)
         @players = [{team: @teams[1]},
                     {team: @teams[1], name: 'foobar'},
-                    {team: @teams[2]}].collect { |h| FactoryGirl.create :player, h }
+                    {team: @teams[2]}].collect { |h| FactoryBot.create :player, h }
         @abstract_model = RailsAdmin::AbstractModel.new('Team')
       end
 
@@ -145,11 +161,11 @@ describe 'RailsAdmin::Adapters::Mongoid', mongoid: true do
         RailsAdmin.config Team do
           field :fans do
             queryable true
-            searchable :all
+            searchable :name
           end
         end
-        @teams = FactoryGirl.create_list(:team, 3)
-        @fans = [{}, {name: 'foobar'}, {}].collect { |h| FactoryGirl.create :fan, h }
+        @teams = FactoryBot.create_list(:team, 3)
+        @fans = [{}, {name: 'foobar'}, {}].collect { |h| FactoryBot.create :fan, h }
         @teams[1].fans = [@fans[0], @fans[1]]
         @teams[2].fans << @fans[2]
         @abstract_model = RailsAdmin::AbstractModel.new('Team')
@@ -172,7 +188,7 @@ describe 'RailsAdmin::Adapters::Mongoid', mongoid: true do
             searchable :all
           end
         end
-        @field_tests = FactoryGirl.create_list(:field_test, 3)
+        @field_tests = FactoryBot.create_list(:field_test, 3)
         @field_tests[0].embeds.create name: 'foo'
         @field_tests[1].embeds.create name: 'bar'
         @abstract_model = RailsAdmin::AbstractModel.new('FieldTest')
@@ -188,33 +204,70 @@ describe 'RailsAdmin::Adapters::Mongoid', mongoid: true do
     end
   end
 
-  describe '#query_conditions' do
+  describe '#query_scope' do
     before do
       @abstract_model = RailsAdmin::AbstractModel.new('Player')
       @players = [{}, {name: 'Many foos'}, {position: 'foo shortage'}].
-                 collect { |h| FactoryGirl.create :player, h }
+                 collect { |h| FactoryBot.create :player, h }
     end
 
     it 'makes correct query' do
       expect(@abstract_model.all(query: 'foo').to_a).to match_array @players[1..2]
     end
+
+    context 'when parsing is not idempotent' do
+      before do
+        RailsAdmin.config do |c|
+          c.model Player do
+            field :name do
+              def parse_value(value)
+                "#{value}s"
+              end
+            end
+          end
+        end
+      end
+
+      it 'parses value only once' do
+        expect(@abstract_model.all(query: 'foo')).to match_array @players[1..1]
+      end
+    end
   end
 
-  describe '#filter_conditions' do
+  describe '#filter_scope' do
     before do
       @abstract_model = RailsAdmin::AbstractModel.new('Player')
-      @team = FactoryGirl.create :team, name: 'king of bar'
+      @team = FactoryBot.create :team, name: 'king of bar'
       @players = [{}, {team: @team}, {name: 'Many foos', team: @team}, {name: 'Great foo'}].
-                 collect { |h| FactoryGirl.create :player, h }
+                 collect { |h| FactoryBot.create :player, h }
     end
 
     it 'makes correct query' do
       expect(@abstract_model.all(filters: {'name' => {'0000' => {o: 'like', v: 'foo'}}, 'team' => {'0001' => {o: 'like', v: 'bar'}}})).to eq([@players[2]])
     end
+
+    context 'when parsing is not idempotent' do
+      before do
+        RailsAdmin.config do |c|
+          c.model Player do
+            field :name do
+              def parse_value(value)
+                "#{value}s"
+              end
+            end
+          end
+        end
+      end
+
+      it 'parses value only once' do
+        expect(@abstract_model.all(filters: {'name' => {'0000' => {o: 'like', v: 'foo'}}})).to match_array @players[2]
+      end
+    end
   end
 
   describe '#build_statement' do
     before do
+      I18n.locale = :en
       @abstract_model = RailsAdmin::AbstractModel.new('FieldTest')
     end
 
@@ -261,10 +314,10 @@ describe 'RailsAdmin::Adapters::Mongoid', mongoid: true do
     end
 
     it 'supports boolean type query' do
-      %w(false f 0).each do |value|
+      %w[false f 0].each do |value|
         expect(@abstract_model.send(:build_statement, :field, :boolean, value, nil)).to eq(field: false)
       end
-      %w(true t 1).each do |value|
+      %w[true t 1].each do |value|
         expect(@abstract_model.send(:build_statement, :field, :boolean, value, nil)).to eq(field: true)
       end
       expect(@abstract_model.send(:build_statement, :field, :boolean, 'word', nil)).to be_nil
@@ -281,7 +334,7 @@ describe 'RailsAdmin::Adapters::Mongoid', mongoid: true do
       expect(@abstract_model.send(:build_statement, :field, :integer, ['', '3', ''], 'between')).to eq(field: {'$gte' => 3})
       expect(@abstract_model.send(:build_statement, :field, :integer, ['', '', '5'], 'between')).to eq(field: {'$lte' => 5})
       expect(@abstract_model.send(:build_statement, :field, :integer, ['', '10', '20'], 'between')).to eq(field: {'$gte' => 10, '$lte' => 20})
-      expect(@abstract_model.send(:build_statement, :field, :integer, %w(15 10 20), 'between')).to eq(field: {'$gte' => 10, '$lte' => 20})
+      expect(@abstract_model.send(:build_statement, :field, :integer, %w[15 10 20], 'between')).to eq(field: {'$gte' => 10, '$lte' => 20})
       expect(@abstract_model.send(:build_statement, :field, :integer, ['', 'word1', ''], 'between')).to be_nil
       expect(@abstract_model.send(:build_statement, :field, :integer, ['', '', 'word2'], 'between')).to be_nil
       expect(@abstract_model.send(:build_statement, :field, :integer, ['', 'word3', 'word4'], 'between')).to be_nil
@@ -334,23 +387,32 @@ describe 'RailsAdmin::Adapters::Mongoid', mongoid: true do
       expect(@abstract_model.send(:build_statement, :field, :string, 'foo', 'was')).to be_nil
       expect(@abstract_model.send(:build_statement, :field, :string, 'foo', 'default')).to eq(field: /foo/i)
       expect(@abstract_model.send(:build_statement, :field, :string, 'foo', 'like')).to eq(field: /foo/i)
+      expect(@abstract_model.send(:build_statement, :field, :string, 'foo', 'not_like')).to eq(field: /^((?!foo).)*$/i)
       expect(@abstract_model.send(:build_statement, :field, :string, 'foo', 'starts_with')).to eq(field: /^foo/i)
       expect(@abstract_model.send(:build_statement, :field, :string, 'foo', 'ends_with')).to eq(field: /foo$/i)
       expect(@abstract_model.send(:build_statement, :field, :string, 'foo', 'is')).to eq(field: 'foo')
     end
 
     it 'supports date type query' do
-      expect(@abstract_model.send(:filter_conditions, 'date_field' => {'1' => {v: ['', '01/02/2012', '01/03/2012'], o: 'between'}})).to eq('$and' => [{'date_field' => {'$gte' => Date.new(2012, 1, 2), '$lte' => Date.new(2012, 1, 3)}}])
-      expect(@abstract_model.send(:filter_conditions, 'date_field' => {'1' => {v: ['', '01/03/2012', ''], o: 'between'}})).to eq('$and' => [{'date_field' => {'$gte' => Date.new(2012, 1, 3)}}])
-      expect(@abstract_model.send(:filter_conditions, 'date_field' => {'1' => {v: ['', '', '01/02/2012'], o: 'between'}})).to eq('$and' => [{'date_field' => {'$lte' => Date.new(2012, 1, 2)}}])
-      expect(@abstract_model.send(:filter_conditions, 'date_field' => {'1' => {v: ['01/02/2012'], o: 'default'}})).to eq('$and' => [{'date_field' => {'$gte' => Date.new(2012, 1, 2), '$lte' => Date.new(2012, 1, 2)}}])
+      expect(@abstract_model.send(:filter_scope, FieldTest, 'date_field' => {'1' => {v: ['', '2012-01-02', '2012-01-03'], o: 'between'}}).selector).to eq('$and' => [{'date_field' => {'$gte' => Date.new(2012, 1, 2), '$lte' => Date.new(2012, 1, 3)}}])
+      expect(@abstract_model.send(:filter_scope, FieldTest, 'date_field' => {'1' => {v: ['', '2012-01-03', ''], o: 'between'}}).selector).to eq('$and' => [{'date_field' => {'$gte' => Date.new(2012, 1, 3)}}])
+      expect(@abstract_model.send(:filter_scope, FieldTest, 'date_field' => {'1' => {v: ['', '', '2012-01-02'], o: 'between'}}).selector).to eq('$and' => [{'date_field' => {'$lte' => Date.new(2012, 1, 2)}}])
+      expect(@abstract_model.send(:filter_scope, FieldTest, 'date_field' => {'1' => {v: ['2012-01-02'], o: 'default'}}).selector).to eq('$and' => [{'date_field' => Date.new(2012, 1, 2)}])
+      expect(@abstract_model.send(:filter_scope, FieldTest, 'date_field' => {'1' => {v: [], o: 'today'}}).selector).to eq('$and' => [{'date_field' => Date.today}])
+      expect(@abstract_model.send(:filter_scope, FieldTest, 'date_field' => {'1' => {v: [], o: 'yesterday'}}).selector).to eq('$and' => [{'date_field' => Date.yesterday}])
+      expect(@abstract_model.send(:filter_scope, FieldTest, 'date_field' => {'1' => {v: [], o: 'this_week'}}).selector).to eq('$and' => [{'date_field' => {'$gte' => Date.today.beginning_of_week, '$lte' => Date.today.end_of_week}}])
+      expect(@abstract_model.send(:filter_scope, FieldTest, 'date_field' => {'1' => {v: [], o: 'last_week'}}).selector).to eq('$and' => [{'date_field' => {'$gte' => 1.week.ago.to_date.beginning_of_week, '$lte' => 1.week.ago.to_date.end_of_week}}])
     end
 
     it 'supports datetime type query' do
-      expect(@abstract_model.send(:filter_conditions, 'datetime_field' => {'1' => {v: ['', '01/02/2012', '01/03/2012'], o: 'between'}})).to eq('$and' => [{'datetime_field' => {'$gte' => Time.local(2012, 1, 2), '$lte' => Time.local(2012, 1, 3).end_of_day}}])
-      expect(@abstract_model.send(:filter_conditions, 'datetime_field' => {'1' => {v: ['', '01/03/2012', ''], o: 'between'}})).to eq('$and' => [{'datetime_field' => {'$gte' => Time.local(2012, 1, 3)}}])
-      expect(@abstract_model.send(:filter_conditions, 'datetime_field' => {'1' => {v: ['', '', '01/02/2012'], o: 'between'}})).to eq('$and' => [{'datetime_field' => {'$lte' => Time.local(2012, 1, 2).end_of_day}}])
-      expect(@abstract_model.send(:filter_conditions, 'datetime_field' => {'1' => {v: ['01/02/2012'], o: 'default'}})).to eq('$and' => [{'datetime_field' => {'$gte' => Time.local(2012, 1, 2), '$lte' => Time.local(2012, 1, 2).end_of_day}}])
+      expect(@abstract_model.send(:filter_scope, FieldTest, 'datetime_field' => {'1' => {v: ['', '2012-01-02T12:00:00', '2012-01-03T12:00:00'], o: 'between'}}).selector).to eq('$and' => [{'datetime_field' => {'$gte' => Time.zone.local(2012, 1, 2, 12), '$lte' => Time.zone.local(2012, 1, 3, 12)}}])
+      expect(@abstract_model.send(:filter_scope, FieldTest, 'datetime_field' => {'1' => {v: ['', '2012-01-03T12:00:00', ''], o: 'between'}}).selector).to eq('$and' => [{'datetime_field' => {'$gte' => Time.zone.local(2012, 1, 3, 12)}}])
+      expect(@abstract_model.send(:filter_scope, FieldTest, 'datetime_field' => {'1' => {v: ['', '', '2012-01-02T12:00:00'], o: 'between'}}).selector).to eq('$and' => [{'datetime_field' => {'$lte' => Time.zone.local(2012, 1, 2, 12)}}])
+      expect(@abstract_model.send(:filter_scope, FieldTest, 'datetime_field' => {'1' => {v: ['2012-01-02T12:00:00'], o: 'default'}}).selector).to eq('$and' => [{'datetime_field' => Time.zone.local(2012, 1, 2, 12)}])
+      expect(@abstract_model.send(:filter_scope, FieldTest, 'datetime_field' => {'1' => {v: [], o: 'today'}}).selector).to eq('$and' => [{'datetime_field' => {'$gte' => Date.today.beginning_of_day, '$lte' => Date.today.end_of_day}}])
+      expect(@abstract_model.send(:filter_scope, FieldTest, 'datetime_field' => {'1' => {v: [], o: 'yesterday'}}).selector).to eq('$and' => [{'datetime_field' => {'$gte' => Date.yesterday.beginning_of_day, '$lte' => Date.yesterday.end_of_day}}])
+      expect(@abstract_model.send(:filter_scope, FieldTest, 'datetime_field' => {'1' => {v: [], o: 'this_week'}}).selector).to eq('$and' => [{'datetime_field' => {'$gte' => Date.today.beginning_of_week.beginning_of_day, '$lte' => Date.today.end_of_week.end_of_day}}])
+      expect(@abstract_model.send(:filter_scope, FieldTest, 'datetime_field' => {'1' => {v: [], o: 'last_week'}}).selector).to eq('$and' => [{'datetime_field' => {'$gte' => 1.week.ago.to_date.beginning_of_week.beginning_of_day, '$lte' => 1.week.ago.to_date.end_of_week.end_of_day}}])
     end
 
     it 'supports enum type query' do

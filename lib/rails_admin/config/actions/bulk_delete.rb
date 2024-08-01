@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module RailsAdmin
   module Config
     module Actions
@@ -9,7 +11,7 @@ module RailsAdmin
         end
 
         register_instance_option :http_methods do
-          [:post, :delete]
+          %i[post delete]
         end
 
         register_instance_option :controller do
@@ -36,20 +38,18 @@ module RailsAdmin
                   destroyed = processed_objects.select(&:destroyed?)
                   not_destroyed = processed_objects - destroyed
                   destroyed.each do |object|
-                    @auditing_adapter && @auditing_adapter.delete_object(object, @abstract_model, _current_user)
+                    @auditing_adapter&.delete_object(object, @abstract_model, _current_user)
                   end
                 end
               end
 
               if destroyed.nil?
-                msg = t('admin.flash.error', name: pluralize(0, @model_config.label), action: t('admin.actions.delete.done'))
-                render text: msg, status: :not_found
+                flash[:error] = t('admin.flash.error', name: pluralize(0, @model_config.label), action: t('admin.actions.delete.done'))
               else
                 flash[:success] = t('admin.flash.successful', name: pluralize(destroyed.count, @model_config.label), action: t('admin.actions.delete.done')) unless destroyed.empty?
                 flash[:error] = t('admin.flash.error', name: pluralize(not_destroyed.count, @model_config.label), action: t('admin.actions.delete.done')) unless not_destroyed.empty?
-                redirect_to back_or_index
               end
-
+              redirect_to back_or_index
             end
           end
         end

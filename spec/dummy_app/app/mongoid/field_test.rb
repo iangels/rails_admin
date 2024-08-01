@@ -1,3 +1,7 @@
+# frozen_string_literal: true
+
+require 'rails_admin/adapters/mongoid'
+
 class FieldTest
   include Mongoid::Document
   include Mongoid::Paperclip
@@ -12,7 +16,7 @@ class FieldTest
   field :array_field, type: Array
   field :big_decimal_field, type: BigDecimal
   field :boolean_field, type: Boolean
-  field :bson_object_id_field, type: RailsAdmin::Adapters::Mongoid::ObjectId
+  field :bson_object_id_field, type: RailsAdmin::Adapters::Mongoid::Bson::OBJECT_ID
   field :bson_binary_field, type: BSON::Binary
   field :date_field, type: Date
   field :datetime_field, type: DateTime
@@ -29,9 +33,16 @@ class FieldTest
   field :time_field, type: Time
 
   field :format, type: String
+  field :open, type: Boolean
   field :restricted_field, type: String
   field :protected_field, type: String
+  field :al, as: :aliased_field, type: String
   has_mongoid_attached_file :paperclip_asset, styles: {thumb: '100x100>'}
+
+  field :shrine_asset_data, type: String
+  include ShrineUploader::Attachment.new(:shrine_asset)
+  field :shrine_versioning_asset_data, type: String
+  include ShrineVersioningUploader::Attachment.new(:shrine_versioning_asset)
 
   has_many :nested_field_tests, dependent: :destroy, inverse_of: :field_test, autosave: true
   accepts_nested_attributes_for :nested_field_tests, allow_destroy: true
@@ -44,21 +55,17 @@ class FieldTest
   accepts_nested_attributes_for :embeds, allow_destroy: true
 
   attr_accessor :delete_paperclip_asset
+
   before_validation { self.paperclip_asset = nil if delete_paperclip_asset == '1' }
 
   field :dragonfly_asset_name
   field :dragonfly_asset_uid
   dragonfly_accessor :dragonfly_asset
+
   mount_uploader :carrierwave_asset, CarrierwaveUploader
-
-  if defined?(Refile)
-    extend Refile::Mongoid::Attachment
-
-    field :refile_asset_filename
-    field :refile_asset_size
-    field :refile_asset_content_type
-    attachment :refile_asset
-  end
+  # carrierwave-mongoid does not support mount_uploaders yet:
+  #   https://github.com/carrierwaveuploader/carrierwave-mongoid/issues/138
+  mount_uploaders :carrierwave_assets, CarrierwaveUploader
 
   validates :short_text, length: {maximum: 255}
 end

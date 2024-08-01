@@ -1,4 +1,6 @@
-class AddSuspendedToPlayerMigration < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class AddSuspendedToPlayerMigration < ActiveRecord::Migration[5.0]
   def self.up
     add_column :players, :suspended, :boolean, default: false
   end

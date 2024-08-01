@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_admin/config/fields/group'
 
 module RailsAdmin
@@ -16,7 +18,7 @@ module RailsAdmin
 
       # Reader for groups that are marked as visible
       def visible_groups
-        parent.groups.collect { |f| f.section = self; f.with(bindings) }.select(&:visible?).select do |g| # rubocop:disable Semicolon
+        parent.groups.collect { |f| f.section = self; f.with(bindings) }.select(&:visible?).select do |g| # rubocop:disable Style/Semicolon
           g.visible_fields.present?
         end
       end

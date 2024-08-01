@@ -1,4 +1,6 @@
-class CreateRelTests < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class CreateRelTests < ActiveRecord::Migration[5.0]
   def self.up
     create_table :rel_tests do |t|
       t.integer :league_id

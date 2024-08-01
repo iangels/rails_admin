@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Player
   include Mongoid::Document
   include Mongoid::Timestamps
@@ -13,13 +15,14 @@ class Player
   field :born_on, type: Date
   field :notes, type: String
   field :suspended, type: Boolean, default: false
+  field :formation, type: String
 
   validates_presence_of(:name)
   validates_numericality_of(:number, only_integer: true)
   validates_uniqueness_of(:number, scope: :team_id, message: 'There is already a player with that number on this team')
 
   validates_each :name do |record, _attr, value|
-    record.errors.add(:base, 'Player is cheating') if value.to_s =~ /on steroids/
+    record.errors.add(:base, 'Player is cheating') if /on steroids/.match?(value.to_s)
   end
 
   has_one :draft, dependent: :destroy
@@ -27,13 +30,7 @@ class Player
 
   before_destroy :destroy_hook
 
+  scope :rails_admin_search, ->(query) { where(name: query.reverse) }
+
   def destroy_hook; end
-
-  def draft_id
-    draft.try :id
-  end
-
-  def draft_id=(id)
-    self.draft = Draft.where(_id: id).first
-  end
 end

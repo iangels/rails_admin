@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 
-describe RailsAdmin::Config::Fields::Base do
+RSpec.describe RailsAdmin::Config::Fields::Base do
   describe '#required' do
     it 'reads the on: :create/:update validate option' do
       RailsAdmin.config Ball do
@@ -8,7 +10,68 @@ describe RailsAdmin::Config::Fields::Base do
       end
 
       expect(RailsAdmin.config('Ball').fields.first.with(object: Ball.new)).to be_required
-      expect(RailsAdmin.config('Ball').fields.first.with(object: FactoryGirl.create(:ball))).not_to be_required
+      expect(RailsAdmin.config('Ball').fields.first.with(object: FactoryBot.create(:ball))).not_to be_required
+    end
+
+    context 'without validation' do
+      it 'is optional' do
+        # draft.notes is nullable and has no validation
+        field = RailsAdmin.config('Draft').edit.fields.detect { |f| f.name == :notes }
+        expect(field.properties.nullable?).to be_truthy
+        expect(field.required?).to be_falsey
+      end
+    end
+
+    context 'with presence validation' do
+      it 'is required' do
+        # draft.date is nullable in the schema but has an AR
+        # validates_presence_of validation that makes it required
+        field = RailsAdmin.config('Draft').edit.fields.detect { |f| f.name == :date }
+        expect(field.properties.nullable?).to be_truthy
+        expect(field.required?).to be_truthy
+      end
+    end
+
+    context 'with numericality validation' do
+      it 'is required' do
+        # draft.round is nullable in the schema but has an AR
+        # validates_numericality_of validation that makes it required
+        field = RailsAdmin.config('Draft').edit.fields.detect { |f| f.name == :round }
+        expect(field.properties.nullable?).to be_truthy
+        expect(field.required?).to be_truthy
+      end
+    end
+
+    context 'with validation marked as allow_nil or allow_blank' do
+      it 'is optional' do
+        # team.revenue is nullable in the schema but has an AR
+        # validates_numericality_of validation that allows nil
+        field = RailsAdmin.config('Team').edit.fields.detect { |f| f.name == :revenue }
+        expect(field.properties.nullable?).to be_truthy
+        expect(field.required?).to be_falsey
+
+        # team.founded is nullable in the schema but has an AR
+        # validates_numericality_of validation that allows blank
+        field = RailsAdmin.config('Team').edit.fields.detect { |f| f.name == :founded }
+        expect(field.properties.nullable?).to be_truthy
+        expect(field.required?).to be_falsey
+      end
+    end
+
+    context 'with conditional validation' do
+      before do
+        class ConditionalValidationTest < Tableless
+          column :foo, :varchar
+          column :bar, :varchar
+          validates :foo, presence: true, if: :persisted?
+          validates :bar, presence: true, unless: :persisted?
+        end
+      end
+
+      it 'is optional' do
+        expect(RailsAdmin.config('ConditionalValidationTest').fields.detect { |f| f.name == :foo }).not_to be_required
+        expect(RailsAdmin.config('ConditionalValidationTest').fields.detect { |f| f.name == :bar }).not_to be_required
+      end
     end
 
     context 'on a Paperclip installation' do
@@ -17,19 +80,36 @@ describe RailsAdmin::Config::Fields::Base do
       end
     end
 
-    context 'when the validation is conditional' do
+    describe 'associations' do
       before do
-        class ConditionalValidationTest < Tableless
-          column :foo, :varchar
-          column :bar, :varchar
-          validates :foo, presence: true, if: :presisted?
-          validates :bar, presence: true, unless: :presisted?
+        class RelTest < Tableless
+          column :league_id, :integer
+          column :division_id, :integer, nil, false
+          column :player_id, :integer
+          belongs_to :league, optional: true
+          belongs_to :division, optional: true
+          belongs_to :player, optional: true
+          validates_numericality_of(:player_id, only_integer: true)
+        end
+        @fields = RailsAdmin.config(RelTest).create.fields
+      end
+
+      describe 'for column with nullable foreign key and no model validations' do
+        it 'is optional' do
+          expect(@fields.detect { |f| f.name == :league }.required?).to be_falsey
         end
       end
 
-      it 'is false' do
-        expect(RailsAdmin.config('ConditionalValidationTest').fields.detect { |f| f.name == :foo }).not_to be_required
-        expect(RailsAdmin.config('ConditionalValidationTest').fields.detect { |f| f.name == :bar }).not_to be_required
+      describe 'for column with non-nullable foreign key and no model validations' do
+        it 'is optional' do
+          expect(@fields.detect { |f| f.name == :division }.required?).to be_falsey
+        end
+      end
+
+      describe 'for column with nullable foreign key and a numericality model validation' do
+        it 'is required' do
+          expect(@fields.detect { |f| f.name == :player }.required?).to be_truthy
+        end
       end
     end
   end
@@ -44,7 +124,7 @@ describe RailsAdmin::Config::Fields::Base do
   end
 
   describe '#children_fields' do
-    POLYMORPHIC_CHILDREN = [:commentable_id, :commentable_type]
+    POLYMORPHIC_CHILDREN = %i[commentable_id commentable_type].freeze
 
     it 'is empty by default' do
       expect(RailsAdmin.config(Team).fields.detect { |f| f.name == :name }.children_fields).to eq([])
@@ -81,7 +161,7 @@ describe RailsAdmin::Config::Fields::Base do
 
     context 'of a Dragonfly installation' do
       it 'is a _name field and _uid field' do
-        expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :dragonfly_asset }.children_fields).to eq([:dragonfly_asset_name, :dragonfly_asset_uid])
+        expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :dragonfly_asset }.children_fields).to eq(%i[dragonfly_asset_name dragonfly_asset_uid])
       end
     end
 
@@ -92,10 +172,50 @@ describe RailsAdmin::Config::Fields::Base do
       end
     end
 
-    if defined?(Refile)
-      context 'of a Refile installation' do
-        it 'is a _id field' do
-          expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :refile_asset }.children_fields).to eq([:refile_asset_id, :refile_asset_filename, :refile_asset_size, :refile_asset_content_type])
+    context 'of a Carrierwave installation with multiple file support' do
+      it 'is the parent field itself' do
+        expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :carrierwave_assets }.children_fields).to eq([:carrierwave_assets])
+        expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :carrierwave_assets }.hidden?).to be_falsey
+      end
+    end
+
+    if defined?(ActiveStorage)
+      context 'of a ActiveStorage installation' do
+        it 'is _attachment and _blob fields' do
+          expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :active_storage_asset }.children_fields).to match_array %i[active_storage_asset_attachment active_storage_asset_blob]
+        end
+
+        it 'is hidden, not filterable' do
+          fields = RailsAdmin.config(FieldTest).fields.select { |f| %i[active_storage_asset_attachment active_storage_asset_blob].include?(f.name) }
+          expect(fields).to all(be_hidden)
+          expect(fields).not_to include(be_filterable)
+        end
+      end
+
+      context 'of a ActiveStorage installation with multiple file support' do
+        it 'is _attachment and _blob fields' do
+          expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :active_storage_assets }.children_fields).to match_array %i[active_storage_assets_attachments active_storage_assets_blobs]
+        end
+
+        it 'is hidden, not filterable' do
+          fields = RailsAdmin.config(FieldTest).fields.select { |f| %i[active_storage_assets_attachments active_storage_assets_blobs].include?(f.name) }
+          expect(fields).to all(be_hidden)
+          expect(fields).not_to include(be_filterable)
+        end
+      end
+    end
+
+    if defined?(Shrine)
+      context 'of a Shrine installation' do
+        it 'is the parent field itself' do
+          expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :shrine_asset }.children_fields).to eq([:shrine_asset_data])
+          expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :shrine_asset }.hidden?).to be_falsey
+        end
+
+        it 'is not filterable' do
+          fields = RailsAdmin.config(FieldTest).fields.select { |f| [:shrine_asset_data].include?(f.name) }
+          expect(fields).to all(be_hidden)
+          expect(fields).not_to include(be_filterable)
         end
       end
     end
@@ -114,7 +234,7 @@ describe RailsAdmin::Config::Fields::Base do
       expect(RailsAdmin.config('Team').list.fields.detect { |f| f.name == :name }.with(object: @team).form_default_value).to eq('default value')
       @team.name = 'set value'
       expect(RailsAdmin.config('Team').list.fields.detect { |f| f.name == :name }.with(object: @team).form_default_value).to be_nil
-      @team = FactoryGirl.create :team
+      @team = FactoryBot.create :team
       @team.name = nil
       expect(RailsAdmin.config('Team').list.fields.detect { |f| f.name == :name }.with(object: @team).form_default_value).to be_nil
     end
@@ -178,10 +298,29 @@ describe RailsAdmin::Config::Fields::Base do
     end
 
     it 'defaults to false if associated collection count >= 100' do
-      @players = 100.times.collect do
-        FactoryGirl.create :player
+      @players = Array.new(100) do
+        FactoryBot.create :player
       end
       expect(RailsAdmin.config(Team).edit.fields.detect { |f| f.name == :players }.associated_collection_cache_all).to be_falsey
+    end
+
+    context 'with custom configuration' do
+      before do
+        RailsAdmin.config.default_associated_collection_limit = 5
+      end
+      it 'defaults to true if associated collection count less than than limit' do
+        @players = Array.new(4) do
+          FactoryBot.create :player
+        end
+        expect(RailsAdmin.config(Team).edit.fields.detect { |f| f.name == :players }.associated_collection_cache_all).to be_truthy
+      end
+
+      it 'defaults to false if associated collection count >= that limit' do
+        @players = Array.new(5) do
+          FactoryBot.create :player
+        end
+        expect(RailsAdmin.config(Team).edit.fields.detect { |f| f.name == :players }.associated_collection_cache_all).to be_falsey
+      end
     end
   end
 
@@ -265,12 +404,6 @@ describe RailsAdmin::Config::Fields::Base do
       it 'of carrierwave should find the underlying column on the base table' do
         expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :carrierwave_asset }.searchable_columns.collect { |c| c[:column] }).to eq(['field_tests.carrierwave_asset'])
       end
-
-      if defined?(Refile)
-        it 'of refile should find the underlying column on the base table' do
-          expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :refile_asset }.searchable_columns.collect { |c| c[:column] }).to eq(['field_tests.refile_asset_id'])
-        end
-      end
     end
   end
 
@@ -280,7 +413,7 @@ describe RailsAdmin::Config::Fields::Base do
         field :virtual_column
         field :name
       end
-      @league = FactoryGirl.create :league
+      @league = FactoryBot.create :league
       expect(RailsAdmin.config('League').export.fields.detect { |f| f.name == :virtual_column }.sortable).to be_falsey
       expect(RailsAdmin.config('League').export.fields.detect { |f| f.name == :virtual_column }.searchable).to be_falsey
       expect(RailsAdmin.config('League').export.fields.detect { |f| f.name == :name }.sortable).to be_truthy
@@ -302,13 +435,6 @@ describe RailsAdmin::Config::Fields::Base do
         expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :carrierwave_asset }.searchable).to eq(:carrierwave_asset)
         expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :carrierwave_asset }.sortable).to eq(:carrierwave_asset)
       end
-
-      if defined?(Refile)
-        it 'of refile should target the first children field' do
-          expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :refile_asset }.searchable).to eq(:refile_asset_id)
-          expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :refile_asset }.sortable).to eq(:refile_asset_id)
-        end
-      end
     end
   end
 
@@ -318,7 +444,7 @@ describe RailsAdmin::Config::Fields::Base do
         field :virtual_column
         field :name
       end
-      @league = FactoryGirl.create :league
+      @league = FactoryBot.create :league
       expect(RailsAdmin.config('League').export.fields.detect { |f| f.name == :virtual_column }.virtual?).to be_truthy
       expect(RailsAdmin.config('League').export.fields.detect { |f| f.name == :name }.virtual?).to be_falsey
     end
@@ -394,12 +520,6 @@ describe RailsAdmin::Config::Fields::Base do
     end
   end
 
-  describe '#associated_collection' do
-    it 'returns [] when type is blank?' do
-      expect(RailsAdmin.config(Comment).fields.detect { |f| f.name == :commentable }.associated_collection('')).to be_empty
-    end
-  end
-
   describe '#visible?' do
     it 'is false when fields have specific name ' do
       class FieldVisibilityTest < Tableless
@@ -414,8 +534,8 @@ describe RailsAdmin::Config::Fields::Base do
         column :updated_on, :timestamp
         column :deleted_on, :timestamp
       end
-      expect(RailsAdmin.config(FieldVisibilityTest).base.fields.select(&:visible?).collect(&:name)).to match_array [:_id, :created_at, :created_on, :deleted_at, :deleted_on, :id, :name, :updated_at, :updated_on]
-      expect(RailsAdmin.config(FieldVisibilityTest).list.fields.select(&:visible?).collect(&:name)).to match_array [:_id, :created_at, :created_on, :deleted_at, :deleted_on, :id, :name, :updated_at, :updated_on]
+      expect(RailsAdmin.config(FieldVisibilityTest).base.fields.select(&:visible?).collect(&:name)).to match_array %i[_id created_at created_on deleted_at deleted_on id name updated_at updated_on]
+      expect(RailsAdmin.config(FieldVisibilityTest).list.fields.select(&:visible?).collect(&:name)).to match_array %i[_id created_at created_on deleted_at deleted_on id name updated_at updated_on]
       expect(RailsAdmin.config(FieldVisibilityTest).edit.fields.select(&:visible?).collect(&:name)).to match_array [:name]
       expect(RailsAdmin.config(FieldVisibilityTest).show.fields.select(&:visible?).collect(&:name)).to match_array [:name]
     end
@@ -430,6 +550,54 @@ describe RailsAdmin::Config::Fields::Base do
       end
 
       expect(RailsAdmin.config(Team).field(:name).allowed_methods).to eq [:name]
+    end
+  end
+
+  describe '#default_filter_operator' do
+    it 'has a default and be user customizable' do
+      RailsAdmin.config Team do
+        list do
+          field :division
+          field :name do
+            default_filter_operator 'is'
+          end
+        end
+      end
+      name_field = RailsAdmin.config('Team').list.fields.detect { |f| f.name == :name }
+      expect(name_field.default_filter_operator).to eq('is') # custom via user specification
+      division_field = RailsAdmin.config('Team').list.fields.detect { |f| f.name == :division }
+      expect(division_field.default_filter_operator).to be nil # rails_admin generic fallback
+    end
+  end
+
+  describe '#eager_load' do
+    let(:field) { RailsAdmin.config('Team').fields.detect { |f| f.name == :players } }
+
+    it 'can be set to true' do
+      RailsAdmin.config Team do
+        field :players do
+          eager_load true
+        end
+      end
+      expect(field.eager_load_values).to eq [:players]
+    end
+
+    it 'can be set to false' do
+      RailsAdmin.config Team do
+        field :players do
+          eager_load false
+        end
+      end
+      expect(field.eager_load_values).to eq []
+    end
+
+    it 'can be set to a custom value' do
+      RailsAdmin.config Team do
+        field :players do
+          eager_load [{players: :draft}, :fans]
+        end
+      end
+      expect(field.eager_load_values).to eq [{players: :draft}, :fans]
     end
   end
 end

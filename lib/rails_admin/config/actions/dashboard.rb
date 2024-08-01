@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module RailsAdmin
   module Config
     module Actions
@@ -12,25 +14,30 @@ module RailsAdmin
           nil
         end
 
+        register_instance_option :auditing_versions_limit do
+          100
+        end
+
         register_instance_option :controller do
           proc do
-            @history = @auditing_adapter && @auditing_adapter.latest || []
+            @history = @auditing_adapter&.latest(@action.auditing_versions_limit) if @action.history?
             if @action.statistics?
-              @abstract_models = RailsAdmin::Config.visible_models(controller: self).collect(&:abstract_model)
+              model_configs = RailsAdmin::Config.visible_models(controller: self)
 
-              @most_recent_changes = {}
+              @abstract_models = model_configs.map(&:abstract_model)
+              @most_recent_created = {}
               @count = {}
               @max = 0
-              @abstract_models.each do |t|
-                scope = @authorization_adapter && @authorization_adapter.query(:index, t)
-                current_count = t.count({}, scope)
+              model_configs.each do |config|
+                scope = @authorization_adapter&.query(:index, config.abstract_model)
+                current_count = config.abstract_model.count({}, scope)
                 @max = current_count > @max ? current_count : @max
-                @count[t.model.name] = current_count
-                next unless t.properties.detect { |c| c.name == :updated_at }
-                @most_recent_changes[t.model.name] = t.first(sort: "#{t.table_name}.updated_at").try(:updated_at)
+                name = config.abstract_model.model.name
+                @count[name] = current_count
+                @most_recent_created[name] = config.last_created_at
               end
             end
-            render @action.template_name, status: (flash[:error].present? ? :not_found : 200)
+            render @action.template_name, status: @status_code || :ok
           end
         end
 
@@ -39,10 +46,14 @@ module RailsAdmin
         end
 
         register_instance_option :link_icon do
-          'icon-home'
+          'fas fa-home'
         end
 
         register_instance_option :statistics? do
+          true
+        end
+
+        register_instance_option :history? do
           true
         end
       end

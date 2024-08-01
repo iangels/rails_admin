@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 
-describe RailsAdmin::Config do
+RSpec.describe RailsAdmin::Config do
   describe '.included_models' do
     it 'only uses included models' do
       RailsAdmin.config.included_models = [Team, League]
@@ -18,10 +20,6 @@ describe RailsAdmin::Config do
       expect(RailsAdmin::AbstractModel.all.collect(&:model)).to eq([League])
     end
 
-    it 'always excludes history', active_record: true do
-      expect(RailsAdmin::AbstractModel.all.collect(&:model)).not_to include(RailsAdmin::History)
-    end
-
     it 'excluded? returns true for any model not on the list' do
       RailsAdmin.config.included_models = [Team, League]
 
@@ -36,7 +34,7 @@ describe RailsAdmin::Config do
   describe '.add_extension' do
     before do
       silence_warnings do
-        RailsAdmin::EXTENSIONS = []
+        RailsAdmin.const_set('EXTENSIONS', [])
       end
     end
 
@@ -74,9 +72,9 @@ describe RailsAdmin::Config do
 
     it 'can be configured' do
       RailsAdmin.config do |config|
-        config.main_app_name = %w(stati c value)
+        config.main_app_name = %w[static value]
       end
-      expect(RailsAdmin.config.main_app_name).to eq(%w(stati c value))
+      expect(RailsAdmin.config.main_app_name).to eq(%w[static value])
     end
   end
 
@@ -131,7 +129,12 @@ describe RailsAdmin::Config do
 
     context 'given paper_trail as the extension for auditing', active_record: true do
       before do
+        class ControllerMock
+          def set_paper_trail_whodunnit; end
+        end
+
         module PaperTrail; end
+
         class Version; end
         RailsAdmin.add_extension(:example, RailsAdmin::Extensions::PaperTrail, auditing: true)
       end
@@ -140,7 +143,7 @@ describe RailsAdmin::Config do
         RailsAdmin.config do |config|
           config.audit_with(:example)
         end
-        expect { RailsAdmin.config.audit_with.call }.not_to raise_error
+        expect { ControllerMock.new.instance_eval(&RailsAdmin.config.audit_with) }.not_to raise_error
       end
     end
   end
@@ -241,6 +244,7 @@ describe RailsAdmin::Config do
         include Mongoid::Document
         recursively_embeds_one
       end
+
       class RecursivelyEmbedsMany
         include Mongoid::Document
         recursively_embeds_many
@@ -256,11 +260,27 @@ describe RailsAdmin::Config do
     it 'should not include classnames start with Concerns::' do
       expect(RailsAdmin::Config.models_pool.select { |m| m.match(/^Concerns::/) }).to be_empty
     end
+
+    it 'includes models in the directory added by config.eager_load_paths' do
+      expect(RailsAdmin::Config.models_pool).to include('Basketball')
+    end
+
+    it 'should include a model which was configured explicitly' do
+      RailsAdmin::Config.model 'PaperTrail::Version' do
+        visible false
+      end
+
+      expect(RailsAdmin::Config.models_pool).to include('PaperTrail::Version')
+    end
   end
 
   describe '.parent_controller' do
+    before do
+      class TestController < ActionController::Base; end
+    end
+
     it 'uses default class' do
-      expect(RailsAdmin.config.parent_controller).to eq '::ApplicationController'
+      expect(RailsAdmin.config.parent_controller).to eq '::ActionController::Base'
     end
 
     it 'uses other class' do
@@ -270,10 +290,127 @@ describe RailsAdmin::Config do
       expect(RailsAdmin.config.parent_controller).to eq 'TestController'
     end
   end
+
+  describe '.parent_controller=' do
+    context 'if RailsAdmin::ApplicationController is already loaded' do
+      before do
+        # preload controllers (e.g. when config.eager_load = true)
+        RailsAdmin::MainController
+      end
+
+      after do
+        RailsAdmin::Config.reset
+        RailsAdmin.send(:remove_const, :ApplicationController)
+        load RailsAdmin::Engine.root.join('app/controllers/rails_admin/application_controller.rb')
+      end
+
+      it 'can be changed' do
+        RailsAdmin.config.parent_controller = 'ApplicationController'
+        expect(RailsAdmin::ApplicationController.superclass).to eq ApplicationController
+        expect(RailsAdmin::MainController.superclass.superclass).to eq ApplicationController
+      end
+    end
+  end
+
+  describe '.forgery_protection_settings' do
+    it 'uses with: :exception by default' do
+      expect(RailsAdmin.config.forgery_protection_settings).to eq(with: :exception)
+    end
+
+    it 'allows to customize settings' do
+      RailsAdmin.config do |config|
+        config.forgery_protection_settings = {with: :null_session}
+      end
+      expect(RailsAdmin.config.forgery_protection_settings).to eq(with: :null_session)
+    end
+  end
+
+  describe '.model' do
+    let(:fields) { described_class.model(Team).fields }
+    before do
+      described_class.model Team do
+        field :players do
+          visible false
+        end
+      end
+    end
+
+    context 'when model expanded' do
+      before do
+        described_class.model(Team) do
+          field :fans
+        end
+      end
+      it 'execute all passed blocks' do
+        expect(fields.map(&:name)).to match_array %i[players fans]
+      end
+    end
+
+    context 'when expand redefine behavior' do
+      before do
+        described_class.model Team do
+          field :players
+        end
+      end
+      it 'execute all passed blocks' do
+        expect(fields.find { |f| f.name == :players }.visible).to be true
+      end
+    end
+
+    context 'when model has no table yet', active_record: true do
+      it 'does not try to apply the configuration block' do
+        described_class.model(WithoutTable) do
+          include_all_fields
+        end
+      end
+    end
+  end
+
+  describe '.reset' do
+    before do
+      RailsAdmin.config do |config|
+        config.included_models = %w[Player Team]
+      end
+      RailsAdmin::AbstractModel.all
+      RailsAdmin::Config.reset
+      RailsAdmin.config do |config|
+        config.excluded_models = ['Player']
+      end
+    end
+    subject { RailsAdmin::AbstractModel.all.map { |am| am.model.name } }
+
+    it 'refreshes the result of RailsAdmin::AbstractModel.all' do
+      expect(subject).not_to include 'Player'
+      expect(subject).to include 'Team'
+    end
+  end
+
+  describe '.reload!' do
+    before do
+      RailsAdmin.config Player do
+        field :name
+      end
+      RailsAdmin.config Team do
+        field :color, :integer
+      end
+    end
+
+    it 'clears current configuration' do
+      RailsAdmin::Config.reload!
+      expect(RailsAdmin::Config.model(Player).fields.map(&:name)).to include :number
+    end
+
+    it 'reloads the configuration from the initializer' do
+      RailsAdmin::Config.reload!
+      expect(RailsAdmin::Config.model(Team).fields.find { |f| f.name == :color }.type).to eq :hidden
+    end
+  end
 end
 
 module ExampleModule
   class AuthorizationAdapter; end
+
   class ConfigurationAdapter; end
+
   class AuditingAdapter; end
 end
