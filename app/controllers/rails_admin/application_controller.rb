@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 require 'rails_admin/abstract_model'
 
 module RailsAdmin
@@ -13,13 +11,11 @@ module RailsAdmin
   end
 
   class ApplicationController < Config.parent_controller.constantize
-    include RailsAdmin::Extensions::ControllerExtension
+    newrelic_ignore if defined?(NewRelic)
 
-    protect_from_forgery(Config.forgery_protection_settings)
-
-    before_action :_authenticate!
-    before_action :_authorize!
-    before_action :_audit!
+    before_filter :_authenticate!
+    before_filter :_authorize!
+    before_filter :_audit!
 
     helper_method :_current_user, :_get_plugin_name
 
@@ -27,14 +23,13 @@ module RailsAdmin
 
     def get_model
       @model_name = to_model_name(params[:model_name])
-      raise RailsAdmin::ModelNotFound unless (@abstract_model = RailsAdmin::AbstractModel.new(@model_name))
-      raise RailsAdmin::ModelNotFound if (@model_config = @abstract_model.config).excluded?
-
+      fail(RailsAdmin::ModelNotFound) unless (@abstract_model = RailsAdmin::AbstractModel.new(@model_name))
+      fail(RailsAdmin::ModelNotFound) if (@model_config = @abstract_model.config).excluded?
       @properties = @abstract_model.properties
     end
 
     def get_object
-      raise RailsAdmin::ObjectNotFound unless (@object = @abstract_model.get(params[:id], @model_config.scope))
+      fail(RailsAdmin::ObjectNotFound) unless (@object = @abstract_model.get(params[:id]))
     end
 
     def to_model_name(param)
@@ -63,21 +58,19 @@ module RailsAdmin
       instance_eval(&RailsAdmin::Config.audit_with)
     end
 
-    def rails_admin_controller?
-      true
+    def user_for_paper_trail
+      _current_user.try(:id) || _current_user
     end
 
     rescue_from RailsAdmin::ObjectNotFound do
       flash[:error] = I18n.t('admin.flash.object_not_found', model: @model_name, id: params[:id])
       params[:action] = 'index'
-      @status_code = :not_found
       index
     end
 
     rescue_from RailsAdmin::ModelNotFound do
       flash[:error] = I18n.t('admin.flash.model_not_found', model: @model_name)
       params[:action] = 'dashboard'
-      @status_code = :not_found
       dashboard
     end
   end

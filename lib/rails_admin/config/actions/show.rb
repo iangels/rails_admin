@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 module RailsAdmin
   module Config
     module Actions
@@ -28,7 +26,7 @@ module RailsAdmin
         end
 
         register_instance_option :link_icon do
-          'fas fa-info-circle'
+          'icon-info-sign'
         end
       end
     end

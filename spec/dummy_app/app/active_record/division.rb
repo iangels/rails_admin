@@ -1,9 +1,11 @@
-# frozen_string_literal: true
-
 class Division < ActiveRecord::Base
-  self.primary_key = :custom_id
+  if Rails.version < '3.2'
+    set_primary_key :custom_id
+  else
+    self.primary_key = :custom_id
+  end
 
-  belongs_to :league, foreign_key: 'custom_league_id', optional: true
+  belongs_to :league, foreign_key: 'custom_league_id'
   has_many :teams
 
   validates_numericality_of(:custom_league_id, only_integer: true)

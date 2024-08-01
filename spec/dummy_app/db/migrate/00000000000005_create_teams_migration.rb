@@ -1,6 +1,4 @@
-# frozen_string_literal: true
-
-class CreateTeamsMigration < ActiveRecord::Migration[5.0]
+class CreateTeamsMigration < ActiveRecord::Migration
   def self.up
     create_table :teams do |t|
       t.timestamps null: false

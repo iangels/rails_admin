@@ -1,13 +1,11 @@
-# frozen_string_literal: true
-
 require 'spec_helper'
 
-RSpec.describe RailsAdmin::Config::Fields::Types::Timestamp, active_record: true do
+describe RailsAdmin::Config::Fields::Types::Timestamp, active_record: true do
   it_behaves_like 'a generic field type', :timestamp_field, :timestamp
 
   describe '#parse_input' do
     before :each do
-      @object = FactoryBot.create(:field_test)
+      @object = FactoryGirl.create(:field_test)
       @time = ::Time.now.getutc
       @field = RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :timestamp_field }
     end

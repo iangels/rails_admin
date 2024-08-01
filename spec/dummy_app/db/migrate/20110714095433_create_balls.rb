@@ -1,6 +1,4 @@
-# frozen_string_literal: true
-
-class CreateBalls < ActiveRecord::Migration[5.0]
+class CreateBalls < ActiveRecord::Migration
   def self.up
     create_table :balls, force: true do |t|
       t.string :color

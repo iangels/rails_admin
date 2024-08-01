@@ -1,6 +1,4 @@
-# frozen_string_literal: true
-
-class AddColorToTeamMigration < ActiveRecord::Migration[5.0]
+class AddColorToTeamMigration < ActiveRecord::Migration
   def self.up
     add_column :teams, :color, :string
   end

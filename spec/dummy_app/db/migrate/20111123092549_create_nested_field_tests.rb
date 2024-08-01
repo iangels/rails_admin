@@ -1,6 +1,4 @@
-# frozen_string_literal: true
-
-class CreateNestedFieldTests < ActiveRecord::Migration[5.0]
+class CreateNestedFieldTests < ActiveRecord::Migration
   def change
     create_table :nested_field_tests do |t|
       t.string :title

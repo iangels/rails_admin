@@ -1,6 +1,4 @@
-# frozen_string_literal: true
-
-class AddTypeToBalls < ActiveRecord::Migration[5.0]
+class AddTypeToBalls < ActiveRecord::Migration
   def change
     add_column :balls, :type, :string
   end

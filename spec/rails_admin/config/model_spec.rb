@@ -1,8 +1,6 @@
-# frozen_string_literal: true
-
 require 'spec_helper'
 
-RSpec.describe RailsAdmin::Config::Model do
+describe RailsAdmin::Config::Model do
   describe '#excluded?' do
     before do
       RailsAdmin.config do |config|
@@ -11,21 +9,8 @@ RSpec.describe RailsAdmin::Config::Model do
     end
 
     it 'returns false when included, true otherwise' do
-      allow(RailsAdmin::AbstractModel).to receive(:all).and_call_original
-
-      player_config = RailsAdmin.config(Player)
-      expect(player_config.excluded?).to be_truthy
-      expect(RailsAdmin::AbstractModel).to have_received(:all).once
-      # Calling a second time uses the cached value.
-      expect(player_config.excluded?).to be_truthy
-      expect(RailsAdmin::AbstractModel).to have_received(:all).once
-
-      comment_config = RailsAdmin.config(Comment)
-      expect(comment_config.excluded?).to be_falsey
-      expect(RailsAdmin::AbstractModel).to have_received(:all).twice
-      # Calling a second time uses the cached value.
-      expect(comment_config.excluded?).to be_falsey
-      expect(RailsAdmin::AbstractModel).to have_received(:all).twice
+      expect(RailsAdmin.config(Player).excluded?).to be_truthy
+      expect(RailsAdmin.config(Comment).excluded?).to be_falsey
     end
   end
 
@@ -94,12 +79,11 @@ RSpec.describe RailsAdmin::Config::Model do
                                           i18n: {
                                             plural: {
                                               rule: ->(count) do
-                                                case count
-                                                when 0
+                                                if count == 0
                                                   :zero
-                                                when 1
+                                                elsif count == 1
                                                   :one
-                                                when 2
+                                                elsif count == 2
                                                   :two
                                                 else
                                                   :other
@@ -139,21 +123,6 @@ RSpec.describe RailsAdmin::Config::Model do
 
     it 'is parent module otherwise' do
       expect(RailsAdmin.config(Cms::BasicPage).navigation_label).to eq('Cms')
-    end
-  end
-
-  describe '#last_created_at', active_record: true do
-    let!(:teams) do
-      [FactoryBot.create(:team, created_at: 1.day.ago), FactoryBot.create(:team, created_at: 2.days.ago)]
-    end
-    before do
-      RailsAdmin.config(Team) do
-        last_created_at { abstract_model.model.maximum(:created_at) }
-      end
-    end
-
-    it 'allow customization' do
-      expect(RailsAdmin.config(Team).last_created_at.to_date).to eq 1.day.ago.to_date
     end
   end
 end

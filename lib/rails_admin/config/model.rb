@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 require 'rails_admin/config'
 require 'rails_admin/config/proxyable'
 require 'rails_admin/config/configurable'
@@ -11,7 +9,6 @@ require 'rails_admin/config/has_fields'
 require 'rails_admin/config/has_description'
 require 'rails_admin/config/sections'
 require 'rails_admin/config/actions'
-require 'rails_admin/config/inspectable'
 
 module RailsAdmin
   module Config
@@ -21,36 +18,29 @@ module RailsAdmin
       include RailsAdmin::Config::Configurable
       include RailsAdmin::Config::Hideable
       include RailsAdmin::Config::Sections
-      include RailsAdmin::Config::Inspectable
 
-      attr_reader :abstract_model, :parent, :root
+      attr_reader :abstract_model
       attr_accessor :groups
-
-      NAMED_INSTANCE_VARIABLES = %i[@parent @root].freeze
+      attr_reader :parent, :root
 
       def initialize(entity)
         @parent = nil
         @root = self
 
-        @abstract_model =
-          case entity
-          when RailsAdmin::AbstractModel
+        @abstract_model = begin
+          if entity.is_a?(RailsAdmin::AbstractModel)
             entity
-          when Class, String
+          elsif entity.is_a?(Class) || entity.is_a?(String) || entity.is_a?(Symbol)
             RailsAdmin::AbstractModel.new(entity)
-          when Symbol
-            RailsAdmin::AbstractModel.new(entity.to_s)
           else
             RailsAdmin::AbstractModel.new(entity.class)
           end
-
+        end
         @groups = [RailsAdmin::Config::Fields::Group.new(self, :default).tap { |g| g.label { I18n.translate('admin.form.basic_info') } }]
       end
 
       def excluded?
-        return @excluded if defined?(@excluded)
-
-        @excluded = !RailsAdmin::AbstractModel.all.collect(&:model_name).include?(abstract_model.try(:model_name))
+        @excluded ||= !RailsAdmin::AbstractModel.all.collect(&:model_name).include?(abstract_model.try(:model_name))
       end
 
       def object_label
@@ -71,7 +61,7 @@ module RailsAdmin
       end
 
       register_instance_option :label_plural do
-        (@label_plural ||= {})[::I18n.locale] ||= abstract_model.model.model_name.human(count: Float::INFINITY, default: label.pluralize(::I18n.locale))
+        (@label_plural ||= {})[::I18n.locale] ||= abstract_model.model.model_name.human(count: Float::INFINITY, default: label.pluralize)
       end
 
       def pluralize(count)
@@ -86,34 +76,44 @@ module RailsAdmin
       register_instance_option :parent do
         @parent_model ||= begin
           klass = abstract_model.model.superclass
-          klass = nil if klass.to_s.in?(%w[Object BasicObject ActiveRecord::Base])
+          klass = nil if klass.to_s.in?(%w(Object BasicObject ActiveRecord::Base))
           klass
         end
       end
 
       register_instance_option :navigation_label do
-        @navigation_label ||=
-          if (parent_module = abstract_model.model.try(:module_parent) || abstract_model.model.try!(:parent)) != Object
+        @navigation_label ||= begin
+          if (parent_module = abstract_model.model.parent) != Object
             parent_module.to_s
           end
+        end
       end
 
       register_instance_option :navigation_icon do
         nil
       end
 
-      register_instance_option :scope do
-        abstract_model.scoped
-      end
-
-      register_instance_option :last_created_at do
-        abstract_model.model.last.try(:created_at) if abstract_model.properties.detect { |c| c.name == :created_at }
-      end
-
       # Act as a proxy for the base section configuration that actually
       # store the configurations.
-      def method_missing(method_name, *args, &block)
-        send(:base).send(method_name, *args, &block)
+      def method_missing(m, *args, &block)
+        send(:base).send(m, *args, &block)
+      end
+
+      def inspect
+        "#<#{self.class.name}[#{abstract_model.model.name}] #{
+          instance_variables.collect do |v|
+            value = instance_variable_get(v)
+            if [:@parent, :@root].include? v
+              if value.respond_to? :name
+                "#{v}=#{value.name.inspect}"
+              else
+                "#{v}=#{value.class.name}"
+              end
+            else
+              "#{v}=#{value.inspect}"
+            end
+          end.join(', ')
+        }>"
       end
     end
   end

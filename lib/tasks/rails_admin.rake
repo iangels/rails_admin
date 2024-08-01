@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 namespace :rails_admin do
   desc 'Install rails_admin'
   task :install do
@@ -11,30 +9,21 @@ namespace :rails_admin do
     system 'rails g rails_admin:uninstall'
   end
 
-  desc 'CI env for GitHub Actions'
+  desc 'CI env for Travis'
   task :prepare_ci_env do
     adapter = ENV['CI_DB_ADAPTER'] || 'sqlite3'
-    database = (adapter == 'sqlite3' ? 'db/development.sqlite3' : 'ci_rails_admin')
-    username =
-      case adapter
-      when 'postgresql'
-        'postgres'
-      when 'mysql2'
-        'root'
-      else
-        ''
-      end
+    database = ENV['CI_DB_DATABASE'] || ('sqlite3' == adapter ? 'db/development.sqlite3' : 'ci_rails_admin')
 
     configuration = {
       'test' => {
         'adapter' => adapter,
         'database' => database,
-        'username' => username,
-        'password' => (adapter == 'postgresql' ? 'postgres' : ''),
-        'host' => '127.0.0.1',
-        'encoding' => 'utf8',
-        'pool' => 5,
-        'timeout' => 5000,
+        'username' => ENV['CI_DB_USERNAME'],
+        'password' => ENV['CI_DB_PASSWORD'],
+        'host' => ENV['CI_DB_HOST'] || 'localhost',
+        'encoding' => ENV['CI_DB_ENCODING'] || 'utf8',
+        'pool' => (ENV['CI_DB_POOL'] || 5).to_int,
+        'timeout' => (ENV['CI_DB_TIMEOUT'] || 5000).to_int,
       },
     }
 

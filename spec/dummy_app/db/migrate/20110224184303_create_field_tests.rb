@@ -1,6 +1,4 @@
-# frozen_string_literal: true
-
-class CreateFieldTests < ActiveRecord::Migration[5.0]
+class CreateFieldTests < ActiveRecord::Migration
   def self.up
     create_table :field_tests do |t|
       t.string :string_field

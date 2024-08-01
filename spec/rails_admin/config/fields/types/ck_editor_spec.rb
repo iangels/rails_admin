@@ -1,9 +1,26 @@
-# frozen_string_literal: true
-
 require 'spec_helper'
 
-RSpec.describe RailsAdmin::Config::Fields::Types::CKEditor do
-  it_behaves_like 'a generic field type', :text_field, :ck_editor
+describe RailsAdmin::Config::Fields::Types::CKEditor do
+  describe 'base_location' do
+    before do
+      @custom_prefix = '/foo'
+      @default_prefix = Rails.application.config.assets.prefix
+      Rails.application.config.assets.prefix = @custom_prefix
+      RailsAdmin.config FieldTest do
+        field :text_field, :ck_editor
+      end
+    end
 
-  it_behaves_like 'a string-like field type', :text_field, :ck_editor
+    after do
+      Rails.application.config.assets.prefix = @default_prefix
+    end
+
+    it 'allows custom assets prefix' do
+      expect(
+        RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :text_field }.with(object: FieldTest.new).base_location[0..(@custom_prefix.length - 1)],
+      ).to eq @custom_prefix
+    end
+  end
+
+  it_behaves_like 'a generic field type', :text_field, :ck_editor
 end

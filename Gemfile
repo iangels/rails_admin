@@ -1,65 +1,62 @@
-# frozen_string_literal: true
-
 source 'https://rubygems.org'
 
 gem 'appraisal', '>= 2.0'
-gem 'devise', '~> 4.7'
-gem 'net-smtp', require: false
-gem 'rails'
-gem 'sassc-rails', '~> 2.1'
-gem 'turbo-rails'
-gem 'vite_rails', require: false
-gem 'webpacker', require: false
-gem 'webrick'
+gem 'devise'
+
+group :mongoid do
+  gem 'mongoid', '~> 4.0.0'
+  gem 'mongoid-paperclip', '>= 0.0.8', require: 'mongoid_paperclip'
+  gem 'carrierwave-mongoid', '>= 0.6.3', require: 'carrierwave/mongoid'
+  gem 'refile-mongoid', '>= 0.0.1', platforms: [:ruby_21, :ruby_22]
+end
+
+group :active_record do
+  platforms :jruby do
+    gem 'activerecord-jdbcmysql-adapter', '>= 1.2'
+    gem 'jdbc-mysql', '>= 5.1'
+    gem 'activerecord-jdbcpostgresql-adapter', '>= 1.2'
+    gem 'jdbc-postgres', '>= 9.2'
+    gem 'activerecord-jdbcsqlite3-adapter', '>= 1.3.0.beta1'
+    gem 'jdbc-sqlite3', '>= 3.7'
+  end
+
+  platforms :ruby, :mswin, :mingw do
+    gem 'mysql2', '~> 0.3.14'
+    gem 'pg', '>= 0.14'
+    gem 'sqlite3', '>= 1.3'
+  end
+
+  gem 'paper_trail', '~> 3.0'
+end
 
 group :development, :test do
   gem 'pry', '>= 0.9'
 end
 
 group :test do
-  gem 'cancancan', '~> 3.0'
-  gem 'carrierwave', ['>= 2.0.0.rc', '< 3']
-  gem 'cuprite', '!= 0.15.1'
-  gem 'database_cleaner-active_record', '>= 2.0', require: false
-  gem 'database_cleaner-mongoid', '>= 2.0', require: false
+  gem 'cancan', '>= 1.6'
+  gem 'cancancan', '~> 1.9'
+  gem 'capybara', '>= 2.1'
+  gem 'carrierwave', '>= 0.8'
+  gem 'coveralls'
+  gem 'database_cleaner', ['>= 1.2', '!= 1.4.0', '!= 1.5.0']
   gem 'dragonfly', '~> 1.0'
-  gem 'factory_bot', '>= 4.2', '!= 6.4.5'
+  gem 'factory_girl', '>= 4.2'
   gem 'generator_spec', '>= 0.8'
-  gem 'kt-paperclip'
   gem 'launchy', '>= 2.2'
   gem 'mini_magick', '>= 3.4'
-  gem 'pundit'
+  gem 'paperclip', ['>= 3.4', '!= 4.3.0']
+  gem 'poltergeist', '~> 1.5'
   gem 'rack-cache', require: 'rack/cache'
-  gem 'rspec-expectations', '!= 3.8.3'
-  gem 'rspec-rails', '>= 4.0.0.beta2'
-  gem 'rspec-retry'
-  gem 'rubocop', ['~> 1.20', '!= 1.22.2'], require: false
-  gem 'rubocop-performance', require: false
-  gem 'shrine', '~> 3.0'
+  gem 'rspec-rails', '>= 2.14'
+  gem 'rubocop', '~> 0.31.0'
   gem 'simplecov', '>= 0.9', require: false
-  gem 'simplecov-lcov', require: false
   gem 'timecop', '>= 0.5'
 
-  # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
-  gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]
-end
-
-group :active_record do
-  gem 'paper_trail', '>= 12.0'
-
-  platforms :ruby, :mswin, :mingw, :x64_mingw do
-    gem 'mysql2', '>= 0.3.14'
-    gem 'pg', '>= 1.0.0'
-    gem 'sqlite3', '~> 1.3'
+  platforms :ruby_21, :ruby_22 do
+    gem 'refile', '~> 0.5', require: 'refile/rails'
+    gem 'refile-mini_magick', '>= 0.1.0'
   end
-end
-
-group :mongoid do
-  gem 'cancancan-mongoid'
-  gem 'carrierwave-mongoid', '>= 0.6.3', require: 'carrierwave/mongoid'
-  gem 'kaminari-mongoid'
-  gem 'mongoid-paperclip', '>= 0.0.8', require: 'mongoid_paperclip'
-  gem 'shrine-mongoid', '~> 1.0'
 end
 
 gemspec

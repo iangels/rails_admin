@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 require 'active_support/core_ext/string/inflections'
 require 'rails_admin/config/sections/base'
 require 'rails_admin/config/sections/edit'
@@ -27,7 +25,7 @@ module RailsAdmin
           section = RailsAdmin::Config::Sections.const_get(name)
           name = name.to_s.underscore.to_sym
           klass.send(:define_method, name) do |&block|
-            @sections ||= {}
+            @sections = {} unless @sections
             @sections[name] = section.new(self) unless @sections[name]
             @sections[name].instance_eval(&block) if block
             @sections[name]

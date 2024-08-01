@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 module RailsAdmin
   module Config
     module Actions
@@ -21,7 +19,7 @@ module RailsAdmin
         register_instance_option :controller do
           proc do
             @general = true
-            @history = @auditing_adapter&.listing_for_model(@abstract_model, params[:query], params[:sort], params[:sort_reverse], params[:all], params[Kaminari.config.param_name]) || []
+            @history = @auditing_adapter && @auditing_adapter.listing_for_model(@abstract_model, params[:query], params[:sort], params[:sort_reverse], params[:all], params[:page]) || []
 
             render @action.template_name
           end
@@ -32,7 +30,7 @@ module RailsAdmin
         end
 
         register_instance_option :link_icon do
-          'fas fa-book'
+          'icon-book'
         end
       end
     end

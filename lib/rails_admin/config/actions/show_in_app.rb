@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 module RailsAdmin
   module Config
     module Actions
@@ -11,11 +9,7 @@ module RailsAdmin
         end
 
         register_instance_option :visible? do
-          authorized? && begin
-            bindings[:controller].main_app.url_for(bindings[:object])
-          rescue StandardError
-            false
-          end
+          authorized? && (bindings[:controller].main_app.url_for(bindings[:object]) rescue false)
         end
 
         register_instance_option :controller do
@@ -25,10 +19,10 @@ module RailsAdmin
         end
 
         register_instance_option :link_icon do
-          'fas fa-eye'
+          'icon-eye-open'
         end
 
-        register_instance_option :turbo? do
+        register_instance_option :pjax? do
           false
         end
       end

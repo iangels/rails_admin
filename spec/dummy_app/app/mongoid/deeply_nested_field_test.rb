@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 class DeeplyNestedFieldTest
   include Mongoid::Document
   include Mongoid::Timestamps

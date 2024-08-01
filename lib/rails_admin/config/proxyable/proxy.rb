@@ -1,9 +1,11 @@
-# frozen_string_literal: true
-
 module RailsAdmin
   module Config
     module Proxyable
-      class Proxy < BasicObject
+      class Proxy
+        instance_methods.each { |m| undef_method m unless m =~ /^(__|instance_eval|object_id)/ }
+
+        attr_reader :bindings
+
         def initialize(object, bindings = {})
           @object = object
           @bindings = bindings
@@ -11,7 +13,7 @@ module RailsAdmin
 
         # Bind variables to be used by the configuration options
         def bind(key, value = nil)
-          if key.is_a?(::Hash)
+          if key.is_a?(Hash)
             @bindings = key
           else
             @bindings[key] = value
@@ -19,18 +21,18 @@ module RailsAdmin
           self
         end
 
-        def method_missing(method_name, *args, &block)
-          if @object.respond_to?(method_name)
-            reset = @object.bindings
+        def method_missing(name, *args, &block)
+          if @object.respond_to?(name)
+            reset = @object.instance_variable_get('@bindings')
             begin
-              @object.bindings = @bindings
-              response = @object.__send__(method_name, *args, &block)
+              @object.instance_variable_set('@bindings', @bindings)
+              response = @object.__send__(name, *args, &block)
             ensure
-              @object.bindings = reset
+              @object.instance_variable_set('@bindings', reset)
             end
             response
           else
-            super(method_name, *args, &block)
+            super(name, *args, &block)
           end
         end
       end

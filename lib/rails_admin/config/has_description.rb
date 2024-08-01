@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 module RailsAdmin
   module Config
     # Provides accessor and autoregistering of model's description.

@@ -1,6 +1,4 @@
-# frozen_string_literal: true
-
-class CreateDraftsMigration < ActiveRecord::Migration[5.0]
+class CreateDraftsMigration < ActiveRecord::Migration
   def self.up
     create_table :drafts do |t|
       t.timestamps null: false

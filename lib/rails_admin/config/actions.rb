@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 module RailsAdmin
   module Config
     module Actions
@@ -11,7 +9,7 @@ module RailsAdmin
           end
           scope ||= :all
           init_actions!
-          actions =
+          actions = begin
             case scope
             when :all
               @@actions
@@ -24,7 +22,7 @@ module RailsAdmin
             when :member
               @@actions.select(&:member?)
             end
-
+          end
           actions = actions.collect { |action| action.with(bindings) }
           bindings[:controller] ? actions.select(&:visible?) : actions
         end
@@ -54,7 +52,7 @@ module RailsAdmin
             def key
               :#{key}
             end
-          ), __FILE__, __LINE__ - 5)
+          ))
           add_action_custom_key(a, &block)
         end
 
@@ -73,7 +71,7 @@ module RailsAdmin
               action = #{klass}.new
               add_action_custom_key(action, &block)
             end
-          }, __FILE__, __LINE__ - 5
+          }
         end
 
       private
@@ -98,7 +96,7 @@ module RailsAdmin
           action.instance_eval(&block) if block
           @@actions ||= []
           if action.custom_key.in?(@@actions.collect(&:custom_key))
-            raise "Action #{action.custom_key} already exists. Please change its custom key."
+            fail "Action #{action.custom_key} already exists. Please change its custom key."
           else
             @@actions << action
           end

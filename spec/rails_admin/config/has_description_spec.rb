@@ -1,8 +1,6 @@
-# frozen_string_literal: true
-
 require 'spec_helper'
 
-RSpec.describe RailsAdmin::Config::HasDescription do
+describe RailsAdmin::Config::HasDescription do
   it 'shows description message when added through the DSL' do
     RailsAdmin.config do |config|
       config.model Team do

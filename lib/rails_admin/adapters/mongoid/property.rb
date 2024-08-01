@@ -1,10 +1,8 @@
-# frozen_string_literal: true
-
 module RailsAdmin
   module Adapters
     module Mongoid
       class Property
-        STRING_TYPE_COLUMN_NAMES = %i[name title subject].freeze
+        STRING_TYPE_COLUMN_NAMES = [:name, :title, :subject]
         attr_reader :property, :model
 
         def initialize(property, model)
@@ -13,11 +11,11 @@ module RailsAdmin
         end
 
         def name
-          (property.options[:as] || property.name).to_sym
+          property.name.to_sym
         end
 
         def pretty_name
-          (property.options[:as] || property.name).to_s.tr('_', ' ').capitalize
+          property.name.to_s.tr('_', ' ').capitalize
         end
 
         def type
@@ -66,14 +64,14 @@ module RailsAdmin
         end
 
         def read_only?
-          model.readonly_attributes.include? property.name.to_s
+          false
         end
 
       private
 
         def object_field_type
-          association = Association.new model.relations.values.detect { |r| r.try(:foreign_key).try(:to_sym) == name }, model
-          if %i[belongs_to referenced_in embedded_in].include?(association.macro)
+          if [:belongs_to, :referenced_in, :embedded_in].
+             include?(model.relations.values.detect { |r| r.foreign_key.try(:to_sym) == name }.try(:macro).try(:to_sym))
             :bson_object_id
           else
             :string

@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 module RailsAdmin
   module Config
     # Defines a visibility configuration
@@ -18,7 +16,7 @@ module RailsAdmin
 
       # Writer to hide object.
       def hide(&block)
-        visible block ? proc { instance_eval(&block) == false } : false
+        visible block ? proc { false == (instance_eval(&block)) } : false
       end
 
       # Writer to show field.

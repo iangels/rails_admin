@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 require 'rails_admin/config/fields/types/text'
 
 module RailsAdmin
@@ -12,23 +10,12 @@ module RailsAdmin
           RailsAdmin::Config::Fields::Types.register(:jsonb, self)
 
           register_instance_option :formatted_value do
-            value ? JSON.pretty_generate(value) : nil
-          end
-
-          register_instance_option :pretty_value do
-            bindings[:view].content_tag(:pre) { formatted_value }.html_safe
-          end
-
-          register_instance_option :export_value do
-            formatted_value
-          end
-
-          def parse_value(value)
-            value.present? ? JSON.parse(value) : nil
+            value.present? ? JSON.pretty_generate(value) : nil
           end
 
           def parse_input(params)
-            params[name] = parse_value(params[name]) if params[name].is_a?(::String)
+            return unless params[name].is_a?(::String)
+            params[name] = (params[name].blank? ? nil : JSON.parse(params[name]))
           end
         end
       end

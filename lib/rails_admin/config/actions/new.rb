@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 module RailsAdmin
   module Config
     module Actions
@@ -11,7 +9,7 @@ module RailsAdmin
         end
 
         register_instance_option :http_methods do
-          %i[get post] # NEW / CREATE
+          [:get, :post] # NEW / CREATE
         end
 
         register_instance_option :controller do
@@ -19,18 +17,15 @@ module RailsAdmin
             if request.get? # NEW
 
               @object = @abstract_model.new
-              @action = @action.with(@action.bindings.merge(object: @object))
-              @authorization_adapter&.attributes_for(:new, @abstract_model)&.each do |name, value|
+              @authorization_adapter && @authorization_adapter.attributes_for(:new, @abstract_model).each do |name, value|
                 @object.send("#{name}=", value)
               end
-              object_params = params[@abstract_model.param_key]
-              if object_params
-                sanitize_params_for!(request.xhr? ? :modal : :create)
-                @object.assign_attributes(@object.attributes.merge(object_params.to_h))
+              if object_params = params[@abstract_model.to_param]
+                @object.set_attributes(@object.attributes.merge(object_params))
               end
               respond_to do |format|
                 format.html { render @action.template_name }
-                format.js   { render @action.template_name, layout: 'rails_admin/modal', content_type: Mime[:html].to_s }
+                format.js   { render @action.template_name, layout: false }
               end
 
             elsif request.post? # CREATE
@@ -39,14 +34,16 @@ module RailsAdmin
               @object = @abstract_model.new
               sanitize_params_for!(request.xhr? ? :modal : :create)
 
-              @object.assign_attributes(params[@abstract_model.param_key])
-              @authorization_adapter&.authorize(:create, @abstract_model, @object)
+              @object.set_attributes(params[@abstract_model.param_key])
+              @authorization_adapter && @authorization_adapter.attributes_for(:create, @abstract_model).each do |name, value|
+                @object.send("#{name}=", value)
+              end
 
               if @object.save
-                @auditing_adapter&.create_object(@object, @abstract_model, _current_user)
+                @auditing_adapter && @auditing_adapter.create_object(@object, @abstract_model, _current_user)
                 respond_to do |format|
                   format.html { redirect_to_on_success }
-                  format.json { render json: {id: @object.id.to_s, label: @model_config.with(object: @object).object_label} }
+                  format.js   { render json: {id: @object.id.to_s, label: @model_config.with(object: @object).object_label} }
                 end
               else
                 handle_save_error
@@ -57,11 +54,7 @@ module RailsAdmin
         end
 
         register_instance_option :link_icon do
-          'fas fa-plus'
-        end
-
-        register_instance_option :writable? do
-          !(bindings[:object] && bindings[:object].readonly?)
+          'icon-plus'
         end
       end
     end

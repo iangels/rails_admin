@@ -1,6 +1,4 @@
-# frozen_string_literal: true
-
-class ChangeDivisionPrimaryKey < ActiveRecord::Migration[5.0]
+class ChangeDivisionPrimaryKey < ActiveRecord::Migration
   def up
     drop_table :divisions
     create_table :divisions, primary_key: 'custom_id' do |t|

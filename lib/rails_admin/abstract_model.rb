@@ -1,7 +1,3 @@
-# frozen_string_literal: true
-
-require 'rails_admin/support/datetime'
-
 module RailsAdmin
   class AbstractModel
     cattr_accessor :all
@@ -21,7 +17,7 @@ module RailsAdmin
       def new(m)
         m = m.constantize unless m.is_a?(Class)
         (am = old_new(m)).model && am.adapter ? am : nil
-      rescue *([LoadError, NameError] + (defined?(ActiveRecord) ? ['ActiveRecord::NoDatabaseError'.constantize, 'ActiveRecord::ConnectionNotEstablished'.constantize] : []))
+      rescue LoadError, NameError
         puts "[RailsAdmin] Could not load model #{m}, assuming model is non existing. (#{$ERROR_INFO})" unless Rails.env.test?
         nil
       end
@@ -48,7 +44,7 @@ module RailsAdmin
     def initialize(model_or_model_name)
       @model_name = model_or_model_name.to_s
       ancestors = model.ancestors.collect(&:to_s)
-      if ancestors.include?('ActiveRecord::Base') && !model.abstract_class? && model.table_exists?
+      if ancestors.include?('ActiveRecord::Base') && !model.abstract_class?
         initialize_active_record
       elsif ancestors.include?('Mongoid::Document')
         initialize_mongoid
@@ -58,14 +54,6 @@ module RailsAdmin
     # do not store a reference to the model, does not play well with ActiveReload/Rails3.2
     def model
       @model_name.constantize
-    end
-
-    def quoted_table_name
-      table_name
-    end
-
-    def quote_column_name(name)
-      name
     end
 
     def to_s
@@ -96,11 +84,13 @@ module RailsAdmin
       associations.each do |association|
         case association.type
         when :has_one
-          child = object.send(association.name)
-          yield(association, [child]) if child
+          if child = object.send(association.name)
+            yield(association, child)
+          end
         when :has_many
-          children = object.send(association.name)
-          yield(association, Array.new(children))
+          object.send(association.name).each do |child| # rubocop:disable ShadowingOuterLocalVariable
+            yield(association, child)
+          end
         end
       end
     end
@@ -109,23 +99,14 @@ module RailsAdmin
 
     def initialize_active_record
       @adapter = :active_record
-      if defined?(::CompositePrimaryKeys)
-        require 'rails_admin/adapters/composite_primary_keys'
-        extend Adapters::CompositePrimaryKeys
-      else
-        require 'rails_admin/adapters/active_record'
-        extend Adapters::ActiveRecord
-      end
+      require 'rails_admin/adapters/active_record'
+      extend Adapters::ActiveRecord
     end
 
     def initialize_mongoid
       @adapter = :mongoid
       require 'rails_admin/adapters/mongoid'
       extend Adapters::Mongoid
-    end
-
-    def parse_field_value(field, value)
-      value.is_a?(Array) ? value.map { |v| field.parse_value(v) } : field.parse_value(value)
     end
 
     class StatementBuilder
@@ -154,22 +135,21 @@ module RailsAdmin
           case @type
           when :date
             build_statement_for_date
-          when :datetime, :timestamp, :time
+          when :datetime, :timestamp
             build_statement_for_datetime_or_timestamp
           end
         end
       end
 
       def build_statement_for_type
-        raise 'You must override build_statement_for_type in your StatementBuilder'
+        fail('You must override build_statement_for_type in your StatementBuilder')
       end
 
       def build_statement_for_integer_decimal_or_float
         case @value
-        when Array
+        when Array then
           val, range_begin, range_end = *@value.collect do |v|
             next unless v.to_i.to_s == v || v.to_f.to_s == v
-
             @type == :integer ? v.to_i : v.to_f
           end
           case @operator
@@ -186,37 +166,22 @@ module RailsAdmin
       end
 
       def build_statement_for_date
-        start_date, end_date = get_filtering_duration
-        if start_date
-          start_date = begin
-            start_date.to_date
-          rescue StandardError
-            nil
-          end
-        end
-        if end_date
-          end_date = begin
-            end_date.to_date
-          rescue StandardError
-            nil
-          end
-        end
-        range_filter(start_date, end_date)
+        range_filter(*get_filtering_duration)
       end
 
       def build_statement_for_datetime_or_timestamp
         start_date, end_date = get_filtering_duration
-        start_date = start_date.beginning_of_day if start_date.is_a?(Date)
-        end_date = end_date.end_of_day if end_date.is_a?(Date)
+        start_date = start_date.to_time.beginning_of_day if start_date
+        end_date = end_date.to_time.end_of_day if end_date
         range_filter(start_date, end_date)
       end
 
       def unary_operators
-        raise 'You must override unary_operators in your StatementBuilder'
+        fail('You must override unary_operators in your StatementBuilder')
       end
 
       def range_filter(_min, _max)
-        raise 'You must override range_filter in your StatementBuilder'
+        fail('You must override range_filter in your StatementBuilder')
       end
 
       class FilteringDuration
@@ -254,7 +219,7 @@ module RailsAdmin
         end
 
         def between
-          [@value[1], @value[2]]
+          [convert_to_date(@value[1]), convert_to_date(@value[2])]
         end
 
         def default
@@ -263,8 +228,18 @@ module RailsAdmin
 
       private
 
+        def date_format
+          I18n.t('admin.misc.filter_date_format',
+                 default: I18n.t('admin.misc.filter_date_format', locale: :en)).gsub('dd', '%d').gsub('mm', '%m').gsub('yy', '%Y')
+        end
+
+        def convert_to_date(value)
+          value.present? && Date.strptime(value, date_format)
+        end
+
         def default_date
-          Array.wrap(@value).first
+          default_date_value = Array.wrap(@value).first
+          convert_to_date(default_date_value) rescue false
         end
       end
     end

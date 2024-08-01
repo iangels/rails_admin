@@ -1,5 +1,4 @@
-# frozen_string_literal: true
-
+# encoding: utf-8
 require 'mini_magick'
 class CarrierwaveUploader < CarrierWave::Uploader::Base
   # Include RMagick or ImageScience support:
@@ -38,9 +37,9 @@ class CarrierwaveUploader < CarrierWave::Uploader::Base
   #   process scale: [50, 50]
   # end
 
-  # Add an allowlist of extensions which are allowed to be uploaded.
+  # Add a white list of extensions which are allowed to be uploaded.
   # For images you might use something like this:
-  # def extension_allowlist
+  # def extension_white_list
   #   %w(jpg jpeg gif png)
   # end
 

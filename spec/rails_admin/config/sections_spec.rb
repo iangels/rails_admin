@@ -1,8 +1,6 @@
-# frozen_string_literal: true
-
 require 'spec_helper'
 
-RSpec.describe RailsAdmin::Config::Sections do
+describe RailsAdmin::Config::Sections do
   describe 'configure' do
     it 'configures without changing the section default list' do
       RailsAdmin.config Team do
@@ -112,12 +110,12 @@ RSpec.describe RailsAdmin::Config::Sections do
         end
       end
 
-      expect(RailsAdmin.config(Team).list.visible_groups.collect { |g| g.visible_fields.collect(&:name) }).to eq([[:founded], %i[name wins]])
-      expect(RailsAdmin.config(Team).edit.visible_groups.collect { |g| g.visible_fields.collect(&:name) }).to eq([[:name], %i[founded wins]])
-      expect(RailsAdmin.config(Team).create.visible_groups.collect { |g| g.visible_fields.collect(&:name) }).to eq([[:name], %i[founded wins]])
+      expect(RailsAdmin.config(Team).list.visible_groups.collect { |g| g.visible_fields.collect(&:name) }).to eq([[:founded], [:name, :wins]])
+      expect(RailsAdmin.config(Team).edit.visible_groups.collect { |g| g.visible_fields.collect(&:name) }).to eq([[:name], [:founded, :wins]])
+      expect(RailsAdmin.config(Team).create.visible_groups.collect { |g| g.visible_fields.collect(&:name) }).to eq([[:name], [:founded, :wins]])
       expect(RailsAdmin.config(Team).update.visible_groups.collect { |g| g.visible_fields.collect(&:name) }).to eq([[:name], [:founded], [:wins], [:losses]])
-      expect(RailsAdmin.config(Team).visible_groups.collect { |g| g.visible_fields.collect(&:name) }.flatten.count).to eq(20)
-      expect(RailsAdmin.config(Team).export.visible_groups.collect { |g| g.visible_fields.collect(&:name) }.flatten.count).to eq(20)
+      expect(RailsAdmin.config(Team).visible_groups.collect { |g| g.visible_fields.collect(&:name) }.flatten.count).to eq(19)
+      expect(RailsAdmin.config(Team).export.visible_groups.collect { |g| g.visible_fields.collect(&:name) }.flatten.count).to eq(19)
     end
   end
 end

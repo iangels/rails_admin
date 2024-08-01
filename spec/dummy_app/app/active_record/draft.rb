@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 class Draft < ActiveRecord::Base
   belongs_to :team
   belongs_to :player

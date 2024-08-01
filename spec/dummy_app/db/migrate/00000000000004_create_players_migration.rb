@@ -1,6 +1,4 @@
-# frozen_string_literal: true
-
-class CreatePlayersMigration < ActiveRecord::Migration[5.0]
+class CreatePlayersMigration < ActiveRecord::Migration
   def self.up
     create_table :players do |t|
       t.timestamps null: false

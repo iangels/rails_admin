@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 require 'rails_admin/config/fields/types/text'
 
 module RailsAdmin
@@ -11,15 +9,12 @@ module RailsAdmin
           RailsAdmin::Config::Fields::Types.register(self)
 
           register_instance_option :formatted_value do
-            RailsAdmin.yaml_dump(value) unless value.nil?
-          end
-
-          def parse_value(value)
-            value.present? ? (RailsAdmin.yaml_load(value) || nil) : nil
+            YAML.dump(value) unless value.nil?
           end
 
           def parse_input(params)
-            params[name] = parse_value(params[name]) if params[name].is_a?(::String)
+            return unless params[name].is_a?(::String)
+            params[name] = (params[name].blank? ? nil : (SafeYAML.load(params[name]) || nil))
           end
         end
       end

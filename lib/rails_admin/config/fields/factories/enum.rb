@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 require 'rails_admin/config/fields'
 require 'rails_admin/config/fields/types/enum'
 require 'rails_admin/config/fields/types/active_record_enum'

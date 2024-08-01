@@ -1,6 +1,4 @@
-# frozen_string_literal: true
-
-class RemoveLeagueIdFromTeams < ActiveRecord::Migration[5.0]
+class RemoveLeagueIdFromTeams < ActiveRecord::Migration
   def self.up
     remove_column :teams, :league_id
   end

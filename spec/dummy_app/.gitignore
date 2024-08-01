@@ -7,9 +7,6 @@
 # Ignore bundler config
 /.bundle
 
-/app/assets/builds/*
-!/app/assets/builds/.keep
-
 # Ignore the default SQLite database.
 /db/*.sqlite3
 
@@ -18,13 +15,3 @@
 /tmp
 
 /public/system
-
-/public/assets
-/public/packs
-/public/packs-test
-/public/vite*
-/node_modules
-/yarn-error.log
-/yarn.lock
-yarn-debug.log*
-.yarn-integrity

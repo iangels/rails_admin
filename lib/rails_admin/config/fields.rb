@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 module RailsAdmin
   module Config
     module Fields
@@ -22,7 +20,7 @@ module RailsAdmin
 
       # Registry of field factories.
       #
-      # Field factory is an anonymous function that receives the parent object,
+      # Field factory is an anonymous function that recieves the parent object,
       # an array of field properties and an array of fields already instantiated.
       #
       # If the factory returns true then that property will not be run through
@@ -52,15 +50,13 @@ module RailsAdmin
         parent.abstract_model.properties.each do |properties|
           # Unless a previous factory has already loaded current field as well
           next if fields.detect { |f| f.name == properties.name }
-
           # Loop through factories until one returns true
           @@registry.detect { |factory| factory.call(parent, properties, fields) }
         end
         # Load fields for all associations (relations)
-        parent.abstract_model.associations.reject { |a| a.type == :belongs_to }.each do |association| # :belongs_to are created by factory for belongs_to fields
+        parent.abstract_model.associations.select { |a| a.type != :belongs_to }.each do |association| # :belongs_to are created by factory for belongs_to fields
           # Unless a previous factory has already loaded current field as well
           next if fields.detect { |f| f.name == association.name }
-
           # Loop through factories until one returns true
           @@registry.detect { |factory| factory.call(parent, association, fields) }
         end
@@ -86,7 +82,5 @@ require 'rails_admin/config/fields/factories/devise'
 require 'rails_admin/config/fields/factories/paperclip'
 require 'rails_admin/config/fields/factories/dragonfly'
 require 'rails_admin/config/fields/factories/carrierwave'
-require 'rails_admin/config/fields/factories/active_storage'
-require 'rails_admin/config/fields/factories/shrine'
-require 'rails_admin/config/fields/factories/action_text'
+require 'rails_admin/config/fields/factories/refile'
 require 'rails_admin/config/fields/factories/association'

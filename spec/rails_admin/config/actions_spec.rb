@@ -1,11 +1,9 @@
-# frozen_string_literal: true
-
 require 'spec_helper'
 
-RSpec.describe RailsAdmin::Config::Actions do
+describe RailsAdmin::Config::Actions do
   describe 'default' do
     it 'is as before' do
-      expect(RailsAdmin::Config::Actions.all.collect(&:key)).to eq(%i[dashboard index show new edit export delete bulk_delete history_show history_index show_in_app])
+      expect(RailsAdmin::Config::Actions.all.collect(&:key)).to eq([:dashboard, :index, :show, :new, :edit, :export, :delete, :bulk_delete, :history_show, :history_index, :show_in_app])
     end
   end
 
@@ -74,7 +72,7 @@ RSpec.describe RailsAdmin::Config::Actions do
         end
       end
 
-      expect(RailsAdmin::Config::Actions.all.collect(&:key)).to eq(%i[dashboard index])
+      expect(RailsAdmin::Config::Actions.all.collect(&:key)).to eq([:dashboard, :index])
     end
 
     it 'restricts by scope' do
@@ -116,7 +114,7 @@ RSpec.describe RailsAdmin::Config::Actions do
         end
       end
 
-      expect(RailsAdmin::Config::Actions.all.collect(&:key)).to eq(%i[dashboard index show])
+      expect(RailsAdmin::Config::Actions.all.collect(&:key)).to eq([:dashboard, :index, :show])
     end
 
     it 'allows to customize the custom_key when customizing an existing action' do
@@ -174,8 +172,8 @@ RSpec.describe RailsAdmin::Config::Actions do
         end
       end
 
-      expect(RailsAdmin::Config::Actions.all.collect(&:custom_key)).to eq(%i[dashboard my_dashboard])
-      expect(RailsAdmin::Config::Actions.all.collect(&:key)).to eq(%i[dashboard dashboard])
+      expect(RailsAdmin::Config::Actions.all.collect(&:custom_key)).to eq([:dashboard, :my_dashboard])
+      expect(RailsAdmin::Config::Actions.all.collect(&:key)).to eq([:dashboard, :dashboard])
     end
   end
 end

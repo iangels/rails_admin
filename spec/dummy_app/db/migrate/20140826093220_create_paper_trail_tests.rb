@@ -1,6 +1,4 @@
-# frozen_string_literal: true
-
-class CreatePaperTrailTests < ActiveRecord::Migration[5.0]
+class CreatePaperTrailTests < ActiveRecord::Migration
   def change
     create_table :paper_trail_tests do |t|
       t.string :name

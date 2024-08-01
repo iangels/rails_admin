@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 require 'rails_admin/config/fields/base'
 require 'rails_admin/config/fields/types/file_upload'
 

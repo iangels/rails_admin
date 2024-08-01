@@ -1,6 +1,4 @@
-# frozen_string_literal: true
-
-class CreateCmsBasicPages < ActiveRecord::Migration[5.0]
+class CreateCmsBasicPages < ActiveRecord::Migration
   def self.up
     create_table :cms_basic_pages do |t|
       t.string :title

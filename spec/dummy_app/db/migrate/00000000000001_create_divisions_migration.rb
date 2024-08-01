@@ -1,6 +1,4 @@
-# frozen_string_literal: true
-
-class CreateDivisionsMigration < ActiveRecord::Migration[5.0]
+class CreateDivisionsMigration < ActiveRecord::Migration
   def self.up
     create_table :divisions do |t|
       t.timestamps null: false
